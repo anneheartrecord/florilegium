@@ -40,7 +40,7 @@ git clone https://github.com/anneheartrecord/florilegium.git ~/.claude/skills/ta
 bash ~/.claude/skills/tashanzhishi/setup.sh
 ```
 
-Requirements: Python 3.10+, Node.js (to build the bgutil provider). `setup.sh` creates an isolated venv. Caption download uses your browser session, so be logged into YouTube in Chrome.
+Requirements: Python 3.10+, Node.js (to build the bgutil provider), deno (the JS runtime yt-dlp uses to solve YouTube's n-challenge; `setup.sh` installs it automatically). `setup.sh` creates an isolated venv. Caption download uses your browser session, so be logged into YouTube in Chrome.
 
 ## Usage
 

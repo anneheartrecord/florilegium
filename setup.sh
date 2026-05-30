@@ -15,8 +15,14 @@ done
 echo "→ 用 $PY310 创建 venv: $HOME_DIR/venv"
 "$PY310" -m venv "$HOME_DIR/venv"
 "$HOME_DIR/venv/bin/pip" install -q -U pip
-echo "→ 安装 yt-dlp / faster-whisper / bgutil 插件"
-"$HOME_DIR/venv/bin/pip" install -q -U yt-dlp faster-whisper bgutil-ytdlp-pot-provider
+echo "→ 安装 yt-dlp / faster-whisper / bgutil 插件 / yt-dlp-ejs（解 n-challenge）"
+"$HOME_DIR/venv/bin/pip" install -q -U yt-dlp faster-whisper bgutil-ytdlp-pot-provider yt-dlp-ejs
+
+# deno：yt-dlp 解 YouTube n-challenge 的默认 JS 运行时（node 26 的权限模型会拦截 EJS）
+if ! command -v deno >/dev/null 2>&1 && [ ! -x "$HOME/.deno/bin/deno" ]; then
+  echo "→ 安装 deno"
+  curl -fsSL https://deno.land/install.sh | sh
+fi
 
 # 构建 bgutil POT 提供器（解锁被 SABR / PO-token 锁死的视频；不需要 Chromium）
 command -v node >/dev/null 2>&1 || { echo "✗ 需要 Node.js 来运行 bgutil 提供器"; exit 1; }

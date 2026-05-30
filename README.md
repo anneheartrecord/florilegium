@@ -40,7 +40,7 @@ git clone https://github.com/anneheartrecord/florilegium.git ~/.claude/skills/ta
 bash ~/.claude/skills/tashanzhishi/setup.sh
 ```
 
-依赖：Python 3.10+、Node.js（构建 bgutil 提供器）。setup.sh 会建一个独立 venv，不污染系统环境。字幕下载用浏览器登录态，需在 Chrome 登录过 YouTube。
+依赖：Python 3.10+、Node.js（构建 bgutil 提供器）、deno（yt-dlp 解 YouTube n-challenge 的 JS 运行时，setup.sh 会自动装）。setup.sh 会建一个独立 venv，不污染系统环境。字幕下载用浏览器登录态，需在 Chrome 登录过 YouTube。
 
 ## 用法
 
