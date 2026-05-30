@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# venv (created by setup.sh under ~/.local/share/tashanzhishi)
+venv/
+.venv/
+
+# transient
+*.log
+*.vtt
+*.webm
+*.m4a
+.DS_Store
