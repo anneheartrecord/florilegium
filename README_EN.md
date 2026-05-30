@@ -1,6 +1,6 @@
 [中文](./README.md)
 
-# tashanzhishi
+# Florilegium · 他山之石
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Shell](https://img.shields.io/badge/shell-bash-green.svg)
@@ -9,7 +9,7 @@
 
 A Claude Code skill: give it a YouTube / video link (or a transcript) and it automatically **transcribes and rewrites the content into a readable article**, then files it into the "他山之石" (other people's insights) folder of your Obsidian vault. Free, runs entirely on your machine.
 
-The name comes from a Chinese proverb: "stones from other hills can polish your jade" — collect others' insights and put them to use.
+The name comes from a Chinese proverb: "stones from other hills can polish your jade" — collect others' insights and put them to use. *Florilegium* is the medieval scholars' term for a curated anthology of excerpts gathered from other people's works — the same idea. The skill's internal name remains `tashanzhishi`.
 
 ## What it solves
 
@@ -34,7 +34,7 @@ It then: pulls captions → cleans them → writes a neutral, directly-readable 
 
 ```bash
 # 1) Drop it into Claude Code's skills directory
-git clone <repo-url> ~/.claude/skills/tashanzhishi
+git clone https://github.com/anneheartrecord/florilegium.git ~/.claude/skills/tashanzhishi
 
 # 2) Install dependencies (recent yt-dlp + faster-whisper + bgutil provider)
 bash ~/.claude/skills/tashanzhishi/setup.sh

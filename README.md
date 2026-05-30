@@ -1,6 +1,6 @@
 [English](./README_EN.md)
 
-# 他山之石 (tashanzhishi)
+# Florilegium · 他山之石
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Shell](https://img.shields.io/badge/shell-bash-green.svg)
@@ -9,7 +9,7 @@
 
 一个 Claude Code skill：给它一个 YouTube / 视频链接（或一段文字稿），它自动把内容**转写、整理成一篇可读文章**，写进你的 Obsidian 知识库的「他山之石」目录，专门用来沉淀他人观点。全程免费、本地运行。
 
-「他山之石，可以攻玉」——收别人的见解，为我所用。
+「他山之石，可以攻玉」——收别人的见解，为我所用。Florilegium 是中世纪学者对「采撷众家精华、汇成一编」的称呼，正好对应这个意思。skill 的内部名仍是 `tashanzhishi`。
 
 ## 它解决什么
 
@@ -34,7 +34,7 @@
 
 ```bash
 # 1) 放到 Claude Code 的 skills 目录
-git clone <repo-url> ~/.claude/skills/tashanzhishi
+git clone https://github.com/anneheartrecord/florilegium.git ~/.claude/skills/tashanzhishi
 
 # 2) 装依赖（新版 yt-dlp + faster-whisper + bgutil 提供器）
 bash ~/.claude/skills/tashanzhishi/setup.sh
