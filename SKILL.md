@@ -1,16 +1,32 @@
 ---
 name: tashanzhishi
-description: Use when 用户给出 YouTube/B站/播客链接，或一段视频文字稿、字幕、他人文章，要整理并剪藏成 20-knowledge/他山之石 下的「他人观点」笔记。触发词：用他山之石、剪藏到他山之石、整理成他山之石文档、把这个视频/链接存档、归档他人观点。
-version: 0.3.0
+description: Use when 用户给出 YouTube/B站/播客链接，或一段视频文字稿、字幕、他人文章，要整理并剪藏成知识库 20-knowledge/他山之石 下的「他人观点」笔记。触发词：用他山之石、剪藏到他山之石、整理成他山之石文档、把这个视频/链接存档、归档他人观点。
+version: 0.4.0
 ---
 
 # 剪藏他人观点到「他山之石」(tashanzhishi)
 
 ## Overview
 
-把一个视频、播客或文章的内容，整理成一篇**可以直接阅读的文章**，存进 `20-knowledge/他山之石/`。
+把一个视频、播客或文章的内容，整理成一篇**可以直接阅读的文章**，存进「他山之石」输出目录。
+
+当前本机默认目录：
+
+```text
+/Users/abc/Documents/knowledge-base/20-knowledge/他山之石
+```
+
+通用安装时，把输出目录理解为：
+
+```text
+<your-vault>/20-knowledge/他山之石
+```
+
+如果用户给了明确目录，以用户目录为准；如果没有，本机使用上面的默认目录。
 
 核心原则：产出的是给读者看的**文章**，不是观点汇总，也不是逐条「作者认为……」的清单。忠实于来源、把事实和推测分清、标注作者立场，但用流畅的文章呈现。这不是写用户自己署名的内容，所以**不套用户文风、也不跑 de-ai-flavor**。输出永远中文。
+
+这个仓库是通用的本地 agent workflow，不绑定 Claude。当前会话如果能看到本 `SKILL.md`，就优先用本目录的脚本；示例里的 `~/.claude/skills/tashanzhishi` 只是常见安装路径，可替换成当前仓库目录。
 
 ## 何时用 / 不用
 
@@ -19,7 +35,7 @@ version: 0.3.0
 
 ## 输入两种来源
 
-1. **链接**（YouTube/B站/播客等）→ 用 yt-dlp 抓元数据 + 字幕。
+1. **链接**（YouTube/B站/播客等）→ 用 yt-dlp 抓元数据 + 字幕；没有字幕时下载音频本地转写。
 2. **粘贴的文字/字幕/文章** → 直接用，跳过抓取。
 
 ## 流程
@@ -29,16 +45,17 @@ version: 0.3.0
 链接来源，运行本目录的脚本：
 
 ```bash
-bash ~/.claude/skills/tashanzhishi/fetch-transcript.sh "<链接>"          # 默认读 Chrome 登录态
-bash ~/.claude/skills/tashanzhishi/fetch-transcript.sh "<链接>" safari   # 换浏览器：safari/brave/edge/firefox
+SKILL_DIR="${SKILL_DIR:-$HOME/.claude/skills/tashanzhishi}"
+bash "$SKILL_DIR/fetch-transcript.sh" "<链接>"          # 默认读 Chrome 登录态
+bash "$SKILL_DIR/fetch-transcript.sh" "<链接>" safari   # 换浏览器：safari/brave/edge/firefox
 ```
 
-它会打印一个临时目录路径，里面有 `meta.txt`（标题 ||| 作者 ||| 上传日期 ||| 链接 ||| 时长）和一个 `.vtt` 字幕文件。YouTube 现在要求登录态才能下字幕，脚本默认读 Chrome 的 cookies，所以需要在 Chrome 里登录过 YouTube。
+它会打印一个临时目录路径，里面有 `meta.txt`（标题 ||| 作者 ||| 上传日期 ||| 链接 ||| 时长）和一个 `.vtt` 字幕文件。YouTube / B站等平台经常需要登录态，脚本默认读 Chrome cookies，所以最好在 Chrome 里登录过对应平台。
 
 把字幕清洗成纯文本再读：
 
 ```bash
-python3 ~/.claude/skills/tashanzhishi/vtt2text.py "<那个目录>"/sub.*.vtt > /tmp/transcript.txt
+python3 "$SKILL_DIR/vtt2text.py" "<那个目录>"/sub.*.vtt > /tmp/transcript.txt
 ```
 
 `vtt2text.py` 会去掉时间轴、内联标签、HTML 实体，并合并自动字幕的滚动重复。然后用 Read 读 `meta.txt` 和 `/tmp/transcript.txt`。注意：视频结尾常有重复的「精彩片段」集锦，蒸馏时忽略那段。
@@ -53,7 +70,19 @@ python3 ~/.claude/skills/tashanzhishi/vtt2text.py "<那个目录>"/sub.*.vtt > /
 
 ### 3. 写文件
 
-写到 `20-knowledge/他山之石/<简洁中文标题>.md`，文件名不含斜杠。`captured` 用 `date +%F` 的当天日期。结构见下。
+写到「他山之石」输出目录。本机默认：
+
+```text
+/Users/abc/Documents/knowledge-base/20-knowledge/他山之石/<简洁中文标题>.md
+```
+
+通用安装时写到：
+
+```text
+<your-vault>/20-knowledge/他山之石/<简洁中文标题>.md
+```
+
+文件名不含斜杠。`captured` 用 `date +%F` 的当天日期。结构见下。
 
 ## 文档结构（可读文章，不是观点汇总）
 
@@ -101,22 +130,23 @@ type: 他人观点
 
 ## 参考样例
 
-`20-knowledge/他山之石/` 下的成品（SpaceX-IPO、跨境券商被查、AI时代普通人如何入局 等）就是目标形态，照它们的可读文章风格来。
+「他山之石」输出目录下的成品（SpaceX-IPO、跨境券商被查、AI时代普通人如何入局 等）就是目标形态，照它们的可读文章风格来。
 
 ## 抓不到字幕的视频怎么办（音频兜底）
 
-YouTube 对第三方工具收紧了两道门：很多视频字幕要 PO token，有些干脆禁用；音频/视频强制 SABR 流，没 PO token 直接 `403`。`fetch-transcript.sh` 抓不到字幕时，走音频兜底（需先跑过 `setup.sh`）：
+`fetch-transcript.sh` 抓不到字幕时，走音频兜底（需先跑过 `setup.sh`）。B 站视频常见情况是没有字幕、只有弹幕，这时直接下载音频转写；YouTube 锁死视频会按需启动 bgutil 解锁 SABR / PO-token：
 
 ```bash
-# 1) 下载音频（fetch-audio.sh 会自动启动 bgutil 提供器解锁 SABR/PO-token）
-AUDIO=$(bash ~/.claude/skills/tashanzhishi/fetch-audio.sh "<链接>")
+# 1) 下载音频（YouTube 会自动启动 bgutil；B 站等平台走通用 yt-dlp）
+SKILL_DIR="${SKILL_DIR:-$HOME/.claude/skills/tashanzhishi}"
+AUDIO=$(bash "$SKILL_DIR/fetch-audio.sh" "<链接>" chrome)
 # 2) 本地转写（faster-whisper，无需 ffmpeg；中文传 zh，质量优先用 large-v3）
 ~/.local/share/tashanzhishi/venv/bin/python \
-  ~/.claude/skills/tashanzhishi/transcribe.py "$AUDIO" small zh > /tmp/transcript.txt
+  "$SKILL_DIR/transcribe.py" "$AUDIO" small zh > /tmp/transcript.txt
 ```
 
 然后读 `/tmp/transcript.txt`，按正常流程写成文章。注意：small 模型对中英混杂的专有名词会有错，蒸馏时清一下，必要时换 large-v3 重转。
 
-音频也下不动时，让用户把 YouTube 的「显示转写 / Show transcript」复制粘贴过来。
+音频也下不动时，让用户把平台自带的转写、字幕、评论区课代表笔记，或手动整理的文字稿粘贴过来。
 
 **NotebookLM MCP 不行**：它的 `add_source` 不支持 YouTube（只能抓网页或粘贴文本），用不了。
