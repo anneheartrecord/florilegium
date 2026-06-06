@@ -7,11 +7,11 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Agent Workflow](https://img.shields.io/badge/agent-workflow-8A63D2.svg)
 
-A general local agent workflow / skill: give it a YouTube, Bilibili, podcast, or other video link (or a transcript), and it will fetch captions or transcribe audio, turn the content into a **readable article**, then file it into the "他山之石" (other people's insights) folder of your Obsidian vault. Free, runs entirely on your machine.
+A general local agent workflow / skill package: give it a YouTube, Bilibili, podcast, or other video link (or a transcript), and it will fetch captions or transcribe audio, turn the content into a **readable article**, then file it into the "他山之石" (other people's insights) folder of your Obsidian vault. Free, runs entirely on your machine.
 
 The name comes from a Chinese proverb: "stones from other hills can polish your jade" — collect others' insights and put them to use. *Florilegium* is the medieval scholars' term for a curated anthology of excerpts gathered from other people's works — the same idea. The skill's internal name remains `tashanzhishi`.
 
-It was first written in the shape of a Claude Code skill, but the repository is not Claude-specific. Codex, Claude, Cursor, OpenCode, or any coding agent that can read `SKILL.md` and run shell scripts can use the workflow.
+It is not tied to Claude Code, Codex, or any single agent runtime. Any agent that can read `SKILL.md` and run this repository's shell / Python scripts can use the workflow. Claude Code and Codex are only installation examples below.
 
 ## What it solves
 
@@ -32,6 +32,7 @@ It then: pulls captions → cleans them → writes a neutral, directly-readable 
 - **Platform-aware audio fallback** — YouTube starts `bgutil` and passes YouTube-specific extractor args; Bilibili and other platforms use the generic `yt-dlp` audio path.
 - **Free & fully local** — nothing leaves your machine except fetching from the source platform; no paid APIs.
 - **Obsidian-native** — the output folder is your vault folder.
+- **Author-first filenames** — when a concrete author is known, output files use `Author——Topic.md`, for example `Ali Abdaal——How to start your first business.md`.
 
 ## Install
 
@@ -74,6 +75,8 @@ Use tashanzhishi to clip this link: https://www.bilibili.com/video/BVxxxx
 ```
 
 Or paste a transcript and let it organize that. Output lands in `your-vault/20-knowledge/他山之石/` (configurable).
+
+Filename convention is author-first. When a concrete author is known, use `Author——Concise topic title.md`; if the author is unknown, fall back to `Concise topic title.md`, or use the institution/channel name as the prefix.
 
 You can also run the scripts manually:
 

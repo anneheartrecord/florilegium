@@ -7,11 +7,11 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Agent Workflow](https://img.shields.io/badge/agent-workflow-8A63D2.svg)
 
-一个通用的本地 agent workflow / skill：给它一个 YouTube、B 站、播客或其他视频链接（也可以直接给文字稿），它会抓字幕或转写音频，再把内容整理成一篇**可直接阅读的文章**，写进你的 Obsidian 知识库的「他山之石」目录，专门用来沉淀他人观点。全程免费、本地运行。
+一个通用的本地 agent workflow / skill package：给它一个 YouTube、B 站、播客或其他视频链接（也可以直接给文字稿），它会抓字幕或转写音频，再把内容整理成一篇**可直接阅读的文章**，写进你的 Obsidian 知识库的「他山之石」目录，专门用来沉淀他人观点。全程免费、本地运行。
 
 「他山之石，可以攻玉」——收别人的见解，为我所用。Florilegium 是中世纪学者对「采撷众家精华、汇成一编」的称呼，正好对应这个意思。skill 的内部名仍是 `tashanzhishi`。
 
-它最早按 Claude Code skill 的形态写，但仓库本身不绑定 Claude。Codex、Claude、Cursor、OpenCode，或者任何能读 `SKILL.md` 并调用 shell 脚本的 coding agent，都可以使用这套流程。
+它不绑定 Claude Code、Codex 或任何单一 agent。只要一个 agent 能读取 `SKILL.md` 并调用本仓库的 shell / Python 脚本，就可以使用这套流程。Claude Code 和 Codex 只是下方提供的安装示例。
 
 ## 它解决什么
 
@@ -32,6 +32,7 @@
 - **平台感知音频兜底**：YouTube 才启动 `bgutil` 和 YouTube 专用参数；B 站等其他平台走通用 `yt-dlp` 音频下载。
 - **全免费、纯本地**：除了从视频平台取数据，没有任何内容离开你的机器，无需任何付费 API。
 - **和 Obsidian 打通**：输出目录就是你的 vault 文件夹。
+- **作者前置命名**：如果已经确定来源是具体个人，输出文件名使用 `作者名——主题标题.md`，例如 `阿里阿巴达——如何开始第一门生意.md`。
 
 ## 安装
 
@@ -74,6 +75,8 @@ bash ~/.codex/skills/tashanzhishi/setup.sh
 ```
 
 或者把一段文字稿粘进来让它整理。输出落到 `你的vault/20-knowledge/他山之石/`（目录可改）。
+
+输出文件命名遵循作者前置：已知具体作者时用 `作者名——简洁中文标题.md`；作者不明确时才退回 `简洁中文标题.md`，或使用机构 / 频道名作为前缀。
 
 也可以手动跑脚本：
 

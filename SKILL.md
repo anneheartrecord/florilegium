@@ -1,7 +1,7 @@
 ---
 name: tashanzhishi
 description: Use when 用户给出 YouTube/B站/播客链接，或一段视频文字稿、字幕、他人文章，要整理并剪藏成知识库 20-knowledge/他山之石 下的「他人观点」笔记。触发词：用他山之石、剪藏到他山之石、整理成他山之石文档、把这个视频/链接存档、归档他人观点。
-version: 0.4.0
+version: 0.4.1
 ---
 
 # 剪藏他人观点到「他山之石」(tashanzhishi)
@@ -26,7 +26,7 @@ version: 0.4.0
 
 核心原则：产出的是给读者看的**文章**，不是观点汇总，也不是逐条「作者认为……」的清单。忠实于来源、把事实和推测分清、标注作者立场，但用流畅的文章呈现。这不是写用户自己署名的内容，所以**不套用户文风、也不跑 de-ai-flavor**。输出永远中文。
 
-这个仓库是通用的本地 agent workflow，不绑定 Claude。当前会话如果能看到本 `SKILL.md`，就优先用本目录的脚本；示例里的 `~/.claude/skills/tashanzhishi` 只是常见安装路径，可替换成当前仓库目录。
+这个仓库是通用的本地 agent workflow / skill package，不绑定 Claude Code、Codex 或任何单一 agent。当前会话如果能看到本 `SKILL.md`，就优先使用这个文件所在目录的脚本；Claude Code、Codex 等目录只是安装位置示例。
 
 ## 何时用 / 不用
 
@@ -45,7 +45,7 @@ version: 0.4.0
 链接来源，运行本目录的脚本：
 
 ```bash
-SKILL_DIR="${SKILL_DIR:-$HOME/.claude/skills/tashanzhishi}"
+SKILL_DIR="<包含 SKILL.md 的 florilegium/tashanzhishi 目录>"
 bash "$SKILL_DIR/fetch-transcript.sh" "<链接>"          # 默认读 Chrome 登录态
 bash "$SKILL_DIR/fetch-transcript.sh" "<链接>" safari   # 换浏览器：safari/brave/edge/firefox
 ```
@@ -73,16 +73,20 @@ python3 "$SKILL_DIR/vtt2text.py" "<那个目录>"/sub.*.vtt > /tmp/transcript.tx
 写到「他山之石」输出目录。本机默认：
 
 ```text
-/Users/abc/Documents/knowledge-base/20-knowledge/他山之石/<简洁中文标题>.md
+/Users/abc/Documents/knowledge-base/20-knowledge/他山之石/<作者名——简洁中文标题>.md
 ```
 
 通用安装时写到：
 
 ```text
-<your-vault>/20-knowledge/他山之石/<简洁中文标题>.md
+<your-vault>/20-knowledge/他山之石/<作者名——简洁中文标题>.md
 ```
 
-文件名不含斜杠。`captured` 用 `date +%F` 的当天日期。结构见下。
+文件名规则：
+
+- 如果已经确定来源是具体个人（作者、主讲人、频道主），文件名必须把作者名放在前面：`作者名——简洁中文标题.md`。例如：`阿里阿巴达——如何开始第一门生意.md`。
+- 如果作者不明确，才使用 `简洁中文标题.md`；如果只确定机构或频道，可用 `机构或频道名——简洁中文标题.md`。
+- 文件名不含斜杠。`captured` 用 `date +%F` 的当天日期。结构见下。
 
 ## 文档结构（可读文章，不是观点汇总）
 
@@ -138,7 +142,7 @@ type: 他人观点
 
 ```bash
 # 1) 下载音频（YouTube 会自动启动 bgutil；B 站等平台走通用 yt-dlp）
-SKILL_DIR="${SKILL_DIR:-$HOME/.claude/skills/tashanzhishi}"
+SKILL_DIR="<包含 SKILL.md 的 florilegium/tashanzhishi 目录>"
 AUDIO=$(bash "$SKILL_DIR/fetch-audio.sh" "<链接>" chrome)
 # 2) 本地转写（faster-whisper，无需 ffmpeg；中文传 zh，质量优先用 large-v3）
 ~/.local/share/tashanzhishi/venv/bin/python \
