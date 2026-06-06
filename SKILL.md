@@ -26,7 +26,7 @@ version: 0.4.1
 
 核心原则：产出的是给读者看的**文章**，不是观点汇总，也不是逐条「作者认为……」的清单。忠实于来源、把事实和推测分清、标注作者立场，但用流畅的文章呈现。这不是写用户自己署名的内容，所以**不套用户文风、也不跑 de-ai-flavor**。输出永远中文。
 
-这个仓库是通用的本地 agent workflow / skill package，不绑定 Claude Code、Codex 或任何单一 agent。当前会话如果能看到本 `SKILL.md`，就优先使用这个文件所在目录的脚本；Claude Code、Codex 等目录只是安装位置示例。
+这个仓库是运行时无关的本地 agent workflow，不绑定 Claude Code、Codex 或任何单一 agent。只要当前 agent 能读取这份 Markdown 指令，并调用同目录下的 shell / Python 脚本，就可以使用这套流程；Claude Code、Codex 等目录只是安装位置示例。
 
 ## 何时用 / 不用
 

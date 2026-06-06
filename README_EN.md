@@ -7,11 +7,11 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Agent Workflow](https://img.shields.io/badge/agent-workflow-8A63D2.svg)
 
-A general local agent workflow / skill package: give it a YouTube, Bilibili, podcast, or other video link (or a transcript), and it will fetch captions or transcribe audio, turn the content into a **readable article**, then file it into the "他山之石" (other people's insights) folder of your Obsidian vault. Free, runs entirely on your machine.
+A runtime-agnostic local agent workflow: give it a YouTube, Bilibili, podcast, or other video link (or a transcript), and it will fetch captions or transcribe audio, turn the content into a **readable article**, then file it into the "他山之石" (other people's insights) folder of your Obsidian vault. Free, runs entirely on your machine.
 
-The name comes from a Chinese proverb: "stones from other hills can polish your jade" — collect others' insights and put them to use. *Florilegium* is the medieval scholars' term for a curated anthology of excerpts gathered from other people's works — the same idea. The skill's internal name remains `tashanzhishi`.
+The name comes from a Chinese proverb: "stones from other hills can polish your jade" — collect others' insights and put them to use. *Florilegium* is the medieval scholars' term for a curated anthology of excerpts gathered from other people's works — the same idea. The workflow's internal name remains `tashanzhishi`.
 
-It is not tied to Claude Code, Codex, or any single agent runtime. Any agent that can read `SKILL.md` and run this repository's shell / Python scripts can use the workflow. Claude Code and Codex are only installation examples below.
+It is not a Claude Code, Codex, or single-runtime extension. The compatibility requirement is simple: an agent must be able to read a Markdown instruction file and run this repository's shell / Python scripts. Put the repository wherever your agent runtime can discover it, or point the agent directly at this repo's `SKILL.md`. Claude Code and Codex are only optional placement examples below.
 
 ## What it solves
 
@@ -45,14 +45,14 @@ bash ~/.local/share/florilegium/setup.sh
 
 Then point your agent at `~/.local/share/florilegium/SKILL.md` and let it call the scripts described there.
 
-### Install for Claude Code
+### Optional: place it in Claude Code's skills directory
 
 ```bash
 git clone https://github.com/anneheartrecord/florilegium.git ~/.claude/skills/tashanzhishi
 bash ~/.claude/skills/tashanzhishi/setup.sh
 ```
 
-### Install for Codex
+### Optional: place it in Codex's skills directory
 
 If you have a Codex skills directory, clone or symlink the repository into it:
 
@@ -95,7 +95,7 @@ AUDIO=$(bash ./fetch-audio.sh "<video url>" chrome)
 
 | File | Purpose |
 |------|---------|
-| `SKILL.md` | Main skill file: flow + document template |
+| `SKILL.md` | Main agent instruction file: flow + document template |
 | `fetch-transcript.sh` | Pull captions + metadata via yt-dlp |
 | `vtt2text.py` | Clean a .vtt subtitle into plain text |
 | `fetch-audio.sh` | Platform-aware audio download: generic yt-dlp for Bilibili and others, bgutil for locked YouTube videos |
