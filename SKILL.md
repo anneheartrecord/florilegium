@@ -1,7 +1,7 @@
 ---
 name: tashanzhishi
 description: Use when 用户给出 YouTube/B站/播客链接，或一段视频文字稿、字幕、他人文章，要整理并剪藏成知识库 20-knowledge/他山之石 下的「他人观点」笔记。触发词：用他山之石、剪藏到他山之石、整理成他山之石文档、把这个视频/链接存档、归档他人观点。
-version: 0.4.1
+version: 0.5.0
 ---
 
 # 剪藏他人观点到「他山之石」(tashanzhishi)
@@ -144,13 +144,60 @@ type: 他人观点
 # 1) 下载音频（YouTube 会自动启动 bgutil；B 站等平台走通用 yt-dlp）
 SKILL_DIR="<包含 SKILL.md 的 florilegium/tashanzhishi 目录>"
 AUDIO=$(bash "$SKILL_DIR/fetch-audio.sh" "<链接>" chrome)
-# 2) 本地转写（faster-whisper，无需 ffmpeg；中文传 zh，质量优先用 large-v3）
+# 2) 本地转写（模型留空=按后端自动选；中文传 zh）
 ~/.local/share/tashanzhishi/venv/bin/python \
-  "$SKILL_DIR/transcribe.py" "$AUDIO" small zh > /tmp/transcript.txt
+  "$SKILL_DIR/transcribe.py" "$AUDIO" "" zh > /tmp/transcript.txt
 ```
 
-然后读 `/tmp/transcript.txt`，按正常流程写成文章。注意：small 模型对中英混杂的专有名词会有错，蒸馏时清一下，必要时换 large-v3 重转。
+转写逐行实时写进输出文件，随时 `wc -c /tmp/transcript.txt` 看进度、区分「在跑」和「卡死」。然后读 `/tmp/transcript.txt`，按正常流程写成文章。
 
 音频也下不动时，让用户把平台自带的转写、字幕、评论区课代表笔记，或手动整理的文字稿粘贴过来。
 
 **NotebookLM MCP 不行**：它的 `add_source` 不支持 YouTube（只能抓网页或粘贴文本），用不了。
+
+## 后端与并发
+
+`transcribe.py` 每次运行自动选后端，stderr 首行标明（`[backend=… model=… lang=… dur=…s]`）：
+
+- **mlx-gpu**：Apple Silicon 且装了 mlx-whisper（`setup.sh` 在 arm64 macOS 上自动装并预热模型）。默认 `large-v3-turbo`，实测 13 分钟音频约 2 分钟转完（2026-08-29，M1 Pro）。
+- **faster-cpu**：其他机器，或 mlx 缺失时静默回退。默认 `small`——CPU 上大模型太慢，这是有意的权衡；CPU 产出的转写专有名词错误率会明显高于 GPU，蒸馏时留意公司名、人名、术语。
+
+显式传模型时按指定的跑，不被自动选择覆盖：GPU 分支的短名映射到 mlx-community（如 `small` → `mlx-community/whisper-small-fp16`；该社区命名不统一，映射表在 `transcribe.py` 里），完整 HF 仓库名原样用。
+
+**并发：GPU 后端串行即可**——GPU 推理本身串行，多路并发只增加显存压力，不提速。CPU 后端要并发时，路数按「物理核数 ÷ 每进程线程数」估；实测教训（2026-08-29，M1 Pro）：每进程线程数给太低时，加路数总吞吐不升反降——先确认每个进程吃满分配到的线程，再往上加。
+
+## 批量用法
+
+一批链接（整季播客、会员合集等）用 `batch.sh`，不要手写一次性队列脚本：
+
+```bash
+SKILL_DIR="<包含 SKILL.md 的 florilegium/tashanzhishi 目录>"
+bash "$SKILL_DIR/batch.sh" "https://youtube.com/watch?v=AAA" "https://bilibili.com/video/BVxxx/"
+```
+
+输出形如：
+
+```text
+[18:02] 队列 2 条，后端 mlx-gpu
+[18:02] (1/2) AAA 下载音频
+[18:03] (1/2) AAA 转写中
+[18:14] (1/2) ✓ AAA 完成 56031B
+[18:26] 全部完成：2 成功 0 失败 0 跳过（共 2 条）
+```
+
+- **可中断可续跑**：Ctrl-C 或杀进程都没关系，重跑同一条命令，已完成的自动跳过。是否完成只看 `<id>.status` 文件，**绝不看文本文件是否非空**——被中断的转写会留下语法完整但内容截断的 `.txt`，从大小看不出来。
+- **单条失败不中断队列**：失败记录进 `<id>.fail`，跑完汇总，坏链接重跑同一命令时会自动重试。
+- 串行执行：GPU 后端并发不提速（见「后端与并发」）。
+- 语言默认按中文（zh）转写；英文或其他语言内容设 `TSZ_LANG=en`（或留空自动检测）再跑。
+- 产物目录 `~/.local/share/tashanzhishi/out/`（环境变量 `TSZ_OUT` 可覆盖）：`<id>.txt` 转写文本、`<id>.meta` 来源与音频时长、`<id>.status` 完成标记。
+
+队列进行中随时查进度与剩余时间：
+
+```bash
+bash "$SKILL_DIR/status.sh"
+# 已完成 11 / 19    进行中 9IBvlu8-umM（约 62%）
+# 剩余音频 323 分钟，按 5.6x 实时估算 ≈ 58 分钟
+# 失败 0
+```
+
+倍率（GPU 5.6x / CPU 1.2x 实时）是 2026-08-29 在 M1 Pro 的实测值，只做粗估。
