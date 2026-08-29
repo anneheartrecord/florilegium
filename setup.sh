@@ -24,6 +24,26 @@ if ! command -v deno >/dev/null 2>&1 && [ ! -x "$HOME/.deno/bin/deno" ]; then
   curl -fsSL https://deno.land/install.sh | sh
 fi
 
+# Apple Silicon：转写走 mlx（GPU）。CTranslate2 在 macOS 只支持 CPU，GPU 加速只有这条路；
+# 实测同一条 13 分钟音频 CPU 10-16 分钟、GPU 2 分 20 秒。其他平台跳过，自动回退 CPU。
+if [ "$(uname)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
+  echo "→ Apple Silicon：安装 mlx-whisper（转写走 GPU）"
+  "$HOME_DIR/venv/bin/pip" install -q -U mlx-whisper
+  # 预热：把默认模型拉进 HF 缓存（约 1.5GB，一次性），并用 1 秒静音做端到端自检
+  echo "→ 预热 whisper-large-v3-turbo 模型缓存（首次约 1.5GB 下载，之后走缓存）"
+  "$HOME_DIR/venv/bin/python" - <<'PYEOF'
+import numpy as np, os, tempfile, wave
+import mlx_whisper
+p = os.path.join(tempfile.gettempdir(), "tashan-warmup.wav")
+w = wave.open(p, "w"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)
+w.writeframes(np.zeros(16000, dtype=np.int16).tobytes())
+w.close()
+mlx_whisper.transcribe(p, path_or_hf_repo="mlx-community/whisper-large-v3-turbo")
+os.remove(p)
+print("✓ mlx GPU 后端自检通过")
+PYEOF
+fi
+
 # 构建 bgutil POT 提供器（解锁被 SABR / PO-token 锁死的视频；不需要 Chromium）
 command -v node >/dev/null 2>&1 || { echo "✗ 需要 Node.js 来运行 bgutil 提供器"; exit 1; }
 if [ ! -d "$HOME_DIR/bgutil" ]; then
@@ -36,4 +56,5 @@ echo "→ 构建 bgutil 提供器"
 echo ""
 echo "✓ 安装完成。"
 echo "  venv:       $HOME_DIR/venv"
+echo "  转写后端:   Apple Silicon 上 mlx-gpu（whisper-large-v3-turbo 已预热）；其他平台 faster-whisper CPU"
 echo "  provider:   node $HOME_DIR/bgutil/server/build/main.js  (fetch-audio.sh 会按需自动启动)"
