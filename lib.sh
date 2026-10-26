@@ -60,18 +60,15 @@ tsz_detect_browser() {
   return 1
 }
 
-# 用户显式指定的登录态写进数组 TSZ_COOKIE_ARGS：cookie 文件（TSZ_COOKIES）优先，
-# 其次浏览器（参数或 TSZ_BROWSER）。没指定返回 1，调用方先匿名抓，失败再自动找浏览器。
-tsz_explicit_cookie_args() { # [browser]
-  local browser="${1:-${TSZ_BROWSER:-}}"
-  if [ -n "${TSZ_COOKIES:-}" ]; then
-    [ -f "$TSZ_COOKIES" ] || { echo "✗ TSZ_COOKIES 指向的文件不存在：$TSZ_COOKIES" >&2; return 2; }
-    TSZ_COOKIE_ARGS=(--cookies "$TSZ_COOKIES")
-  elif [ -n "$browser" ]; then
-    TSZ_COOKIE_ARGS=(--cookies-from-browser "$browser")
-  else
-    return 1
-  fi
+# 登录态规则（fetch-transcript.sh / fetch-audio.sh 共用）：
+#   - 指定了浏览器（参数或 TSZ_BROWSER）：只用这个浏览器，不再回退；
+#   - 否则第一次用 cookie 文件（TSZ_COOKIES），没有就匿名；没拿到再自动找浏览器重试。
+# cookie 文件往往只导出了某一个站（例如只有 YouTube），所以它失败后仍要回退浏览器。
+# TSZ_COOKIES 写进数组 TSZ_COOKIE_ARGS；没设返回 1，文件不存在返回 2。
+tsz_cookie_file_args() {
+  [ -n "${TSZ_COOKIES:-}" ] || return 1
+  [ -f "$TSZ_COOKIES" ] || { echo "✗ TSZ_COOKIES 指向的文件不存在：$TSZ_COOKIES" >&2; return 2; }
+  TSZ_COOKIE_ARGS=(--cookies "$TSZ_COOKIES")
 }
 
 # 文章输出目录：环境变量 TSZ_ARTICLE_DIR 优先，其次配置文件。都没有返回 1。

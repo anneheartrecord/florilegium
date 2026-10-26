@@ -6,9 +6,9 @@
 #   <dir>/sub.*.vtt 或 sub.*.srt -> 字幕文件（优先中文，其次英文；B 站只给 srt）
 # yt-dlp diagnostics go to stderr.
 #
-# 登录态：指定了 browser 参数、TSZ_BROWSER 或 TSZ_COOKIES（cookie 文件）就直接用；
-# 都没指定时先匿名抓，没拿到字幕再自动找一个用过的浏览器读登录态重试
-# （B 站 AI 字幕、YouTube 人机验证都需要登录态）。
+# 登录态：指定了 browser 参数或 TSZ_BROWSER 就只用这个浏览器；否则先用 TSZ_COOKIES
+# 指向的 cookie 文件（没设就匿名），没拿到字幕再自动找一个用过的浏览器读登录态重试
+# （B 站 AI 字幕、YouTube 人机验证都需要登录态）。规则见 lib.sh。
 
 set -uo pipefail
 SD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -46,15 +46,16 @@ fetch() { # [cookie 参数...]
 }
 has_subs() { local f; for f in "$DIR"/sub.*.vtt "$DIR"/sub.*.srt; do [ -e "$f" ] && return 0; done; return 1; }
 
-tsz_explicit_cookie_args "${2:-}"; rc=$?
-if [ "$rc" -eq 2 ]; then
-  exit 1
-elif [ "$rc" -eq 0 ]; then
-  fetch "${TSZ_COOKIE_ARGS[@]}"
+PINNED="${2:-${TSZ_BROWSER:-}}"
+if [ -n "$PINNED" ]; then
+  fetch --cookies-from-browser "$PINNED"
 else
-  fetch
+  tsz_cookie_file_args; rc=$?
+  [ "$rc" -eq 2 ] && exit 1
+  if [ "$rc" -eq 0 ]; then first="用 cookie 文件"; fetch "${TSZ_COOKIE_ARGS[@]}"
+  else first="匿名"; fetch; fi
   if ! has_subs && BROWSER="$(tsz_detect_browser)"; then
-    echo "→ 匿名没拿到字幕，改用 $BROWSER 的登录态重试（macOS 可能弹钥匙串授权）" >&2
+    echo "→ ${first}没拿到字幕，改用 ${BROWSER} 的登录态重试（macOS 可能弹钥匙串授权）" >&2
     fetch --cookies-from-browser "$BROWSER"
   fi
 fi

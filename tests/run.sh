@@ -60,6 +60,17 @@ out="$(env -i HOME="$H" PATH="$YT:/usr/bin:/bin" bash "$ROOT/fetch-audio.sh" "ht
 check "音频下载失败时退出码为 2 并给出排查建议" [ "$rc" -eq 2 ]
 check "排查建议里有 --upgrade" grep -q -- "--upgrade" <<<"$out"
 
+# 模拟用过 Chrome 的机器：两种系统的浏览器数据目录都建上
+H="$(fresh_home)"
+mkdir -p "$H/Library/Application Support/Google/Chrome" "$H/.config/google-chrome"
+touch "$TMP/yt-cookies.txt"
+out="$(env -i HOME="$H" PATH="$YT:/usr/bin:/bin" TSZ_COOKIES="$TMP/yt-cookies.txt" bash "$ROOT/fetch-transcript.sh" "https://example.com/v" 2>&1)"
+check "cookie 文件没拿到字幕时回退浏览器" grep -q "用 cookie 文件没拿到字幕，改用 chrome" <<<"$out"
+out="$(env -i HOME="$H" PATH="$YT:/usr/bin:/bin" bash "$ROOT/fetch-audio.sh" "https://example.com/v" 2>&1)"
+check "匿名下载失败时回退浏览器" grep -q "匿名下载失败，改用 chrome" <<<"$out"
+out="$(env -i HOME="$H" PATH="$YT:/usr/bin:/bin" TSZ_BROWSER=firefox bash "$ROOT/fetch-transcript.sh" "https://example.com/v" 2>&1)"
+check "指定了浏览器就不再回退" [ "$(grep -c "改用" <<<"$out")" -eq 0 ]
+
 echo "[vtt2text.py]"
 printf '1\n00:00:01,000 --> 00:00:02,000\n第一句\n\n2\n00:00:02,000 --> 00:00:03,000\n第二句\n' > "$TMP/a.srt"
 check "srt 去掉编号和时间轴" [ "$(python3 "$ROOT/vtt2text.py" "$TMP/a.srt")" = "$(printf '第一句\n第二句')" ]

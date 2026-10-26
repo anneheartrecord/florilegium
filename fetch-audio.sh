@@ -4,7 +4,7 @@
 # B 站、播客等走通用 yt-dlp 下载；YouTube 用 deno 解 n-challenge，
 # 锁死视频（SABR / PO-token）再按需启动可选的 bgutil 提供器（setup.sh --with-bgutil）。
 # 用法: fetch-audio.sh <url> [browser]
-# 登录态规则同 fetch-transcript.sh：没指定就先匿名，失败再自动找浏览器重试。
+# 登录态规则同 fetch-transcript.sh（见 lib.sh）：先 cookie 文件或匿名，失败再自动找浏览器重试。
 # 成功时把音频文件路径打印到 stdout。
 set -uo pipefail
 SD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,15 +47,16 @@ fi
 fetch() { "${TSZ_YTDLP[@]}" "${YTDLP_ARGS[@]}" "$@" "$URL" >&2; }
 got_audio() { ls "$DIR"/audio.* >/dev/null 2>&1; }
 
-tsz_explicit_cookie_args "${2:-}"; rc=$?
-if [ "$rc" -eq 2 ]; then
-  exit 1
-elif [ "$rc" -eq 0 ]; then
-  fetch "${TSZ_COOKIE_ARGS[@]}"
+PINNED="${2:-${TSZ_BROWSER:-}}"
+if [ -n "$PINNED" ]; then
+  fetch --cookies-from-browser "$PINNED"
 else
-  fetch
+  tsz_cookie_file_args; rc=$?
+  [ "$rc" -eq 2 ] && exit 1
+  if [ "$rc" -eq 0 ]; then first="用 cookie 文件"; fetch "${TSZ_COOKIE_ARGS[@]}"
+  else first="匿名"; fetch; fi
   if ! got_audio && BROWSER="$(tsz_detect_browser)"; then
-    echo "→ 匿名下载失败，改用 $BROWSER 的登录态重试（macOS 可能弹钥匙串授权）" >&2
+    echo "→ ${first}下载失败，改用 ${BROWSER} 的登录态重试（macOS 可能弹钥匙串授权）" >&2
     fetch --cookies-from-browser "$BROWSER"
   fi
 fi

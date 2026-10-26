@@ -76,7 +76,8 @@ setup.sh 会做这些事，任何一步失败都只降级对应能力，不会�
 
 - **B 站字幕必须登录才给**，所以最好在浏览器里登录过 B 站；
 - macOS 上读 Chrome 的 cookie 会弹钥匙串授权，点允许即可；
-- 想固定用某个浏览器，设 `TSZ_BROWSER=firefox`；想用导出的 cookie 文件，设 `TSZ_COOKIES=/path/to/cookies.txt`。
+- 想用导出的 cookie 文件，设 `TSZ_COOKIES=/path/to/cookies.txt`：第一次请求就用它，拿不到仍会回退浏览器，所以只导出了 YouTube 的 cookie 也不影响 B 站；
+- 想固定用某个浏览器，设 `TSZ_BROWSER=firefox`，这时不再回退。
 
 ## 特点
 
