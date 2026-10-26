@@ -71,7 +71,7 @@ bash "$SKILL_DIR/fetch-transcript.sh" "<链接>" firefox   # 指定浏览器：c
 
 它会打印一个临时目录路径，里面有 `meta.txt`（标题 ||| 作者 ||| 上传日期 ||| 链接 ||| 时长）和字幕文件 `sub.<语言>.vtt` 或 `sub.<语言>.srt`（B 站只给 srt），可能有多个语言，中文优先选一个。
 
-登录态：脚本先匿名抓；没拿到字幕时自动找本机用过的浏览器，读它的 cookie 重试。B 站字幕必须登录才给，所以用户最好在浏览器里登录过 B 站。macOS 上读 Chrome cookie 会弹钥匙串授权，提醒用户点允许。也可以用环境变量 `TSZ_BROWSER` 指定浏览器，或 `TSZ_COOKIES` 指向一个 Netscape 格式的 cookie 文件。
+登录态：脚本第一次请求用 `TSZ_COOKIES` 指向的 cookie 文件（Netscape 格式），没设就匿名；没拿到字幕时自动找本机用过的浏览器，读它的 cookie 重试。cookie 文件常常只覆盖一个站，所以它失败后照样会回退浏览器。B 站字幕必须登录才给，所以用户最好在浏览器里登录过 B 站。macOS 上读 Chrome cookie 会弹钥匙串授权，提醒用户点允许。用 `TSZ_BROWSER` 或第二个参数指定浏览器时，只用那个浏览器，不再回退。
 
 退出码 2 表示没抓到字幕，改走下文的音频兜底。
 

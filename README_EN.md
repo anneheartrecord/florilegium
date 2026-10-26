@@ -78,7 +78,8 @@ Requests go out anonymously first. If that fails, the scripts find a browser you
 
 - **Bilibili only serves captions to logged-in users**, so log in to Bilibili in your browser;
 - on macOS, reading Chrome's cookies triggers a Keychain prompt — click Allow;
-- to pin a browser, set `TSZ_BROWSER=firefox`; to use an exported cookie file, set `TSZ_COOKIES=/path/to/cookies.txt`.
+- to use an exported cookie file, set `TSZ_COOKIES=/path/to/cookies.txt`: the first request uses it and still falls back to your browser, so a YouTube-only cookie file doesn't break Bilibili;
+- to pin a browser, set `TSZ_BROWSER=firefox`; then there is no fallback.
 
 ## Features
 
