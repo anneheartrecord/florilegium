@@ -2,6 +2,8 @@
 """音频转文字：自动选择本机最快可用的后端，逐行实时输出。
 
 用法: transcribe.py <音频文件> [模型] [语言]
+      transcribe.py --warmup   下载默认模型并用 1 秒静音跑通一次（setup.sh 调用）
+      transcribe.py --check    打印 backend/model/cached，不联网、不加载模型（doctor.sh 调用）
   模型省略或传空串 → 按后端自动选：mlx (GPU) 用 large-v3-turbo，faster-whisper (CPU) 用 small。
   显式传入模型则按指定的跑；GPU 分支会把它映射成 mlx-community/whisper-<名>。
   语言默认自动检测；中文视频传 zh，此时模型位置传空串：transcribe.py audio.m4a "" zh
@@ -13,15 +15,28 @@ Apple Silicon 上没装 mlx 时回退并在 stderr 提示一行装法，任务�
 输出：转录文本逐行打印到 stdout，每行 flush——重定向到文件时字节数随进度增长，
 用 wc -c 就能区分「正在跑」和「卡死」。两个分支的 stdout 格式完全一致（逐行纯文本）。
 stderr 首行统一为：[backend=… model=… lang=… dur=…s]
+
+模型下载：模型未缓存时先探测 huggingface.co，连不上就自动改用 hf-mirror.com。
+用户自己设了 HF_ENDPOINT 时不探测，按用户的来。
 """
+import importlib.util
 import os
 import platform
 import re
 import sys
+import urllib.error
+import urllib.request
 
 MLX_MODEL_DEFAULT = "mlx-community/whisper-large-v3-turbo"
 CPU_MODEL_DEFAULT = "small"
 SAMPLE_RATE = 16000
+HF_OFFICIAL = "https://huggingface.co"
+HF_MIRROR = "https://hf-mirror.com"
+# faster-whisper 短名对应的 HF 仓库（faster_whisper.utils 里的映射，常用的几个）
+_CPU_REPOS = {
+    name: f"Systran/faster-whisper-{name}"
+    for name in ("tiny", "base", "small", "medium", "large-v1", "large-v2", "large-v3")
+}
 
 # mlx verbose 行示例：[00:00.000 --> 01:23.456] 或 [01:00:00.000 --> 01:01:00.000] 转出的文字
 _MLX_LINE_RE = re.compile(r"^\[[\d:.]+ --> [\d:.]+\] ?(.*)$")
@@ -88,6 +103,72 @@ class _MlxStdoutFilter:
             line, self._buf = self._buf, ""
             self._emit(line)
         self._real.flush()
+
+
+def _hf_cache_root():
+    if os.environ.get("HF_HUB_CACHE"):
+        return os.environ["HF_HUB_CACHE"]
+    home = os.environ.get("HF_HOME") or os.path.join(os.path.expanduser("~"), ".cache", "huggingface")
+    return os.path.join(home, "hub")
+
+
+def hf_cached(repo):
+    """模型是否已在 HF 本地缓存里（看 snapshots 目录，不 import huggingface_hub）。"""
+    if not repo:
+        return False
+    snaps = os.path.join(_hf_cache_root(), "models--" + repo.replace("/", "--"), "snapshots")
+    return os.path.isdir(snaps) and any(os.scandir(snaps))
+
+
+def _reachable(url):
+    try:
+        urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=3)
+        return True
+    except urllib.error.HTTPError:
+        return True  # 有 HTTP 响应就说明连得上
+    except Exception:
+        return False
+
+
+def ensure_hf_endpoint(repo):
+    """模型没缓存时选下载源：官方连不上就切镜像，两边都不通就提前报错。
+
+    必须在 import mlx_whisper / faster_whisper 之前调用：huggingface_hub 在 import 时
+    读取 HF_ENDPOINT，之后再设不生效。repo 为 None 表示本地模型目录，不需要下载。
+    """
+    if repo is None or os.environ.get("HF_ENDPOINT") or os.environ.get("HF_HUB_OFFLINE") == "1":
+        return
+    if hf_cached(repo) or _reachable(HF_OFFICIAL):
+        return
+    if _reachable(HF_MIRROR):
+        os.environ["HF_ENDPOINT"] = HF_MIRROR
+        print(
+            f"→ huggingface.co 连不上，模型 {repo} 改从镜像 {HF_MIRROR} 下载"
+            "（设 HF_ENDPOINT 可指定其他下载源）",
+            file=sys.stderr,
+            flush=True,
+        )
+        return
+    die(
+        f"✗ 模型 {repo} 还没下载，而 huggingface.co 和 {HF_MIRROR} 都连不上。\n"
+        "  联网后重试；也可以先把文字稿粘贴给 agent 直接整理。"
+    )
+
+
+def cpu_repo(model):
+    """CPU 分支模型名 → HF 仓库；本地目录返回 None。未知短名原样返回（仅用于判断缓存）。"""
+    if os.path.isdir(model):
+        return None
+    return _CPU_REPOS.get(model, model)
+
+
+def mlx_available():
+    """Apple Silicon 且装了 mlx_whisper。只查包在不在，不 import，避免提前带入 huggingface_hub。"""
+    return (
+        sys.platform == "darwin"
+        and platform.machine() == "arm64"
+        and importlib.util.find_spec("mlx_whisper") is not None
+    )
 
 
 def detect_backend():
@@ -159,10 +240,48 @@ def mlx_repo(model):
     )
 
 
+def default_repo():
+    """(backend, 默认模型仓库)：与 main() 的自动选择一致。"""
+    if mlx_available():
+        return "mlx-gpu", MLX_MODEL_DEFAULT
+    return "faster-cpu", cpu_repo(CPU_MODEL_DEFAULT)
+
+
+def check():
+    backend, repo = default_repo()
+    print(f"backend={backend}")
+    print(f"model={repo}")
+    print(f"cached={1 if hf_cached(repo) else 0}")
+    print(f"faster_whisper={1 if importlib.util.find_spec('faster_whisper') else 0}")
+
+
+def warmup():
+    """下载默认模型并用 1 秒静音端到端跑一次，确认后端可用。"""
+    import numpy as np
+
+    backend, repo = default_repo()
+    ensure_hf_endpoint(repo)
+    silence = np.zeros(SAMPLE_RATE, dtype=np.float32)
+    if backend == "mlx-gpu":
+        import mlx_whisper
+
+        mlx_whisper.transcribe(silence, path_or_hf_repo=repo)
+    else:
+        from faster_whisper import WhisperModel
+
+        segments, _ = WhisperModel(CPU_MODEL_DEFAULT, device="cpu", compute_type="int8").transcribe(silence)
+        list(segments)
+    print(f"✓ {backend} 后端自检通过（模型 {repo}）")
+
+
 def main():
     args = sys.argv[1:]
     if not args:
-        die("usage: transcribe.py <audio> [model] [lang]")
+        die("usage: transcribe.py <audio> [model] [lang] | --warmup | --check")
+    if args[0] == "--check":
+        return check()
+    if args[0] == "--warmup":
+        return warmup()
     audio = args[0]
     if not os.path.isfile(audio):
         die(f"✗ 音频文件不存在: {audio}")
@@ -171,6 +290,10 @@ def main():
     if not lang:
         lang = None
 
+    if mlx_available():
+        ensure_hf_endpoint(mlx_repo(explicit_model or MLX_MODEL_DEFAULT))
+    else:
+        ensure_hf_endpoint(cpu_repo(explicit_model or CPU_MODEL_DEFAULT))
     use_mlx, hint = detect_backend()
     if use_mlx:
         run_mlx(audio, mlx_repo(explicit_model or MLX_MODEL_DEFAULT), lang)
@@ -182,6 +305,7 @@ def main():
                 file=sys.stderr,
                 flush=True,
             )
+            ensure_hf_endpoint(cpu_repo(explicit_model or CPU_MODEL_DEFAULT))
         run_cpu(audio, explicit_model or CPU_MODEL_DEFAULT, lang)
 
 
