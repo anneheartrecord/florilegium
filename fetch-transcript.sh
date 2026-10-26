@@ -13,8 +13,14 @@ if [[ -z "$URL" ]]; then
   echo "usage: fetch-transcript.sh <url> [browser]   # browser 默认 chrome" >&2
   exit 1
 fi
-# YouTube 现在要求登录态才能下字幕，用浏览器 cookies 解锁。需在该浏览器登录 YouTube。
-BROWSER="${2:-chrome}"
+# YouTube 现在要求登录态才能下字幕。优先使用本地持久化的 cookies 文件，未配置时回退浏览器读取。
+COOKIE_FILE="$HOME/.config/secrets/youtube-cookies.txt"
+if [[ -f "$COOKIE_FILE" ]]; then
+  COOKIE_ARGS=(--cookies "$COOKIE_FILE")
+else
+  BROWSER="${2:-chrome}"
+  COOKIE_ARGS=(--cookies-from-browser "$BROWSER")
+fi
 
 # 解析 yt-dlp 调用方式：优先 PATH 上的 yt-dlp，回退到 python3 -m yt_dlp
 if command -v yt-dlp >/dev/null 2>&1; then
@@ -31,7 +37,7 @@ DIR="$(mktemp -d -t tashan-XXXXXX)"
 # --skip-download: 只要字幕和元数据，不下视频，因此不需要 ffmpeg。
 # 优先简中/繁中/通用中文，回退英文。自动字幕和人工字幕都试。
 "${YTDLP[@]}" --skip-download \
-  --cookies-from-browser "$BROWSER" \
+  "${COOKIE_ARGS[@]}" \
   --write-auto-subs --write-subs \
   --sub-langs "zh-Hans,zh-Hant,zh,zh-CN,en,en-orig" \
   --sub-format vtt \

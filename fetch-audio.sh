@@ -24,8 +24,15 @@ is_youtube_url() {
   esac
 }
 
+COOKIE_FILE="$HOME/.config/secrets/youtube-cookies.txt"
+if [[ -f "$COOKIE_FILE" ]]; then
+  COOKIE_ARG=(--cookies "$COOKIE_FILE")
+else
+  COOKIE_ARG=(--cookies-from-browser "$BROWSER")
+fi
+
 DIR="$(mktemp -d -t tashan-audio-XXXXXX)"
-YTDLP_ARGS=(-f "bestaudio/18/worst[acodec!=none]/best[acodec!=none]" --cookies-from-browser "$BROWSER" -o "$DIR/audio.%(ext)s")
+YTDLP_ARGS=(-f "bestaudio/18/worst[acodec!=none]/best[acodec!=none]" "${COOKIE_ARG[@]}" -o "$DIR/audio.%(ext)s")
 
 if is_youtube_url; then
   # 锁死的 YouTube 视频靠 bgutil 解锁；B 站等平台不要走这套 YouTube 专用参数。

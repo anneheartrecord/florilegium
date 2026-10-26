@@ -23,8 +23,8 @@ MLX_MODEL_DEFAULT = "mlx-community/whisper-large-v3-turbo"
 CPU_MODEL_DEFAULT = "small"
 SAMPLE_RATE = 16000
 
-# mlx verbose 行示例：[00:00.000 --> 01:23.456] 转出的文字
-_MLX_LINE_RE = re.compile(r"^\[\d{1,2}:[\d.]+ --> \d{1,2}:[\d.]+\] ?(.*)$")
+# mlx verbose 行示例：[00:00.000 --> 01:23.456] 或 [01:00:00.000 --> 01:01:00.000] 转出的文字
+_MLX_LINE_RE = re.compile(r"^\[[\d:.]+ --> [\d:.]+\] ?(.*)$")
 # mlx 语言自动检测时打印的提示行：不进转写文本，转去 stderr
 _MLX_INFO_LINES = ("Detected language:", "Detecting language")
 

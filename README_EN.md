@@ -24,6 +24,8 @@ It then: pulls captions → cleans them → writes a neutral, directly-readable 
 ## Features
 
 - **A readable article, not a bullet dump** — reads like a short magazine piece, not `1. The author thinks…`.
+- **Transcription Intent Interception** — automatically intercepts user requests mentioning transcription / transcribing alongside video/audio/links, refusing raw unprocessed ASR verbatim dumps and producing a distilled, readable article directly.
+- **Automated Topic Knowledge Hub Integration (topic-hub)** — once saved, the workflow extracts core claims, frameworks, and counter-arguments, then automatically merges them into your Obsidian vault's "主题汇聚" Topic Hub Cards across sources (or queues unmapped topics into `_index.md`), preventing insights from leaking.
 - **Faithful + bias-flagged** — facts and speculation kept separate; the author's promotions/agenda are called out.
 - **Three-tier retrieval**:
   1. Downloadable captions → grabbed directly with yt-dlp (fastest).
