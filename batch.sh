@@ -5,7 +5,7 @@
 #   - 串行执行：GPU 推理本身串行，并发只加显存压力不提速；
 #     CPU 后端要并发见 SKILL.md「后端与并发」。
 #   - 产物目录: TSZ_OUT（默认 ~/.local/share/tashanzhishi/out/）
-#   - 浏览器登录态: TSZ_BROWSER（默认 chrome，透传给 fetch-audio.sh）
+#   - 登录态: TSZ_BROWSER / TSZ_COOKIES（不设则先匿名下载，失败再自动找浏览器，见 fetch-audio.sh）
 #   - 强制语言: TSZ_LANG（默认 zh）
 set -uo pipefail
 SD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,7 +15,6 @@ source "$SD/lib.sh"
 
 PY="$(tsz_py)"
 OUT="$(tsz_out_dir)"; mkdir -p "$OUT"
-BROWSER="${TSZ_BROWSER:-chrome}"
 LANG_ARG="${TSZ_LANG:-zh}"
 BACKEND="$(tsz_backend)"
 # 倍率=转写速度÷音频时长，2026-08-29 在 M1 Pro 实测（GPU 5.6x / CPU 1.2x），粗估用
@@ -48,7 +47,7 @@ for url in "$@"; do
   fi
   rm -f "$OUT/$id.fail"
   echo "[$(ts)] ($i/$total) $id 下载音频"
-  AUDIO="$(bash "$SD/fetch-audio.sh" "$url" "$BROWSER")"
+  AUDIO="$(bash "$SD/fetch-audio.sh" "$url")"
   if [ -z "$AUDIO" ] || [ ! -f "$AUDIO" ]; then
     echo "[$(ts)] ($i/$total) ✗ $id 音频下载失败，继续下一条"
     tsz_mark_fail "$id" "音频下载失败"

@@ -5,109 +5,137 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Shell](https://img.shields.io/badge/shell-bash-green.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)
 ![Agent Workflow](https://img.shields.io/badge/agent-workflow-8A63D2.svg)
 
-A runtime-agnostic local agent workflow: give it a YouTube, Bilibili, podcast, or other video link (or a transcript), and it will fetch captions or transcribe audio, turn the content into a **readable article**, then file it into the "他山之石" (other people's insights) folder of your Obsidian vault. Free, runs entirely on your machine.
+A runtime-agnostic local agent workflow: give it a YouTube, Bilibili, podcast, or other video link (or paste a transcript), and it will fetch captions or transcribe the audio on your machine, turn the content into a **readable article in Chinese**, and save it into a folder you choose (for example an Obsidian vault). It is built for collecting other people's insights.
 
-The name comes from a Chinese proverb: "stones from other hills can polish your jade" — collect others' insights and put them to use. *Florilegium* is the medieval scholars' term for a curated anthology of excerpts gathered from other people's works — the same idea. The workflow's internal name remains `tashanzhishi`.
+The name comes from a Chinese proverb: "stones from other hills can polish your jade" — collect others' insights and put them to use. *Florilegium* is the medieval scholars' term for a curated anthology of excerpts from other people's works — the same idea. The workflow's internal name remains `tashanzhishi`.
 
-It is not a Claude Code, Codex, or single-runtime extension. The compatibility requirement is simple: an agent must be able to read a Markdown instruction file and run this repository's shell / Python scripts. Put the repository wherever your agent runtime can discover it, or point the agent directly at this repo's `SKILL.md`. Claude Code and Codex are only optional placement examples below.
+It is not tied to Claude Code, Codex, or any single runtime. The only requirements: your agent can read a Markdown instruction file and run this repository's shell / Python scripts.
 
-## What it solves
+> **Output language:** articles are always written in Chinese, whatever the source language. Other output languages are not supported yet.
 
-You see a good video and want to keep the author's points, but taking notes by hand is tedious. This workflow turns it into one sentence:
+## Three ways to use it
 
-> Use tashanzhishi to clip this link: `<video url>`
+| Tier | What you give it | What you need to install |
+|------|------------------|--------------------------|
+| 1. Tidy a transcript | Pasted transcript, captions, or article | Nothing — clone the repo and let your agent read `SKILL.md` |
+| 2. Fetch captions | A video link that has captions (Bilibili, YouTube, …) | Run `setup.sh` once |
+| 3. Local transcription | Videos or podcasts without captions | Same; the speech model downloads on first use |
 
-It then: pulls captions → cleans them → writes a neutral, directly-readable article → saves it into your Obsidian "他山之石" folder.
+**Fastest start:** install nothing and tell your agent:
 
-## Features
+```
+Use tashanzhishi to turn this transcript into a 他山之石 article: <paste transcript>
+```
 
-- **A readable article, not a bullet dump** — reads like a short magazine piece, not `1. The author thinks…`.
-- **Transcription Intent Interception** — automatically intercepts user requests mentioning transcription / transcribing alongside video/audio/links, refusing raw unprocessed ASR verbatim dumps and producing a distilled, readable article directly.
-- **Automated Topic Knowledge Hub Integration (topic-hub)** — once saved, the workflow extracts core claims, frameworks, and counter-arguments, then automatically merges them into your Obsidian vault's "主题汇聚" Topic Hub Cards across sources (or queues unmapped topics into `_index.md`), preventing insights from leaking.
-- **Faithful + bias-flagged** — facts and speculation kept separate; the author's promotions/agenda are called out.
-- **Three-tier retrieval**:
-  1. Downloadable captions → grabbed directly with yt-dlp (fastest).
-  2. No captions but audio available → local transcription with `faster-whisper`. Bilibili videos without captions use this path.
-  3. YouTube anti-bot locked (SABR / PO-token) → a bundled `bgutil` PO-token provider unlocks the audio, then transcribes.
-- **Platform-aware audio fallback** — YouTube starts `bgutil` and passes YouTube-specific extractor args; Bilibili and other platforms use the generic `yt-dlp` audio path.
-- **Free & fully local** — nothing leaves your machine except fetching from the source platform; no paid APIs.
-- **Obsidian-native** — the output folder is your vault folder.
-- **Author-first filenames** — when a concrete author is known, output files use `Author——Topic.md`, for example `Ali Abdaal——How to start your first business.md`.
+The first time it saves a file, the agent asks which folder to use and remembers your choice.
 
 ## Install
-
-### Generic repository install
 
 ```bash
 git clone https://github.com/anneheartrecord/florilegium.git ~/.local/share/florilegium
 bash ~/.local/share/florilegium/setup.sh
+bash ~/.local/share/florilegium/doctor.sh   # see which capabilities are ready
 ```
 
-Then point your agent at `~/.local/share/florilegium/SKILL.md` and let it call the scripts described there.
+Then point your agent at `~/.local/share/florilegium/SKILL.md`, or clone straight into its skills folder, e.g. `~/.claude/skills/tashanzhishi` or `~/.codex/skills/tashanzhishi`.
 
-### Optional: place it in Claude Code's skills directory
+**The only hard requirement is Python 3.10+.** If you don't have it, install [uv](https://docs.astral.sh/uv/) and setup.sh will use it to fetch a suitable Python. Everything else goes into an isolated venv under `~/.local/share/tashanzhishi`; nothing touches your system. To uninstall, delete that folder.
+
+What setup.sh does — any step that fails only disables the matching capability, it never aborts the install:
+
+- finds a Python 3.10+ and creates an isolated venv;
+- installs yt-dlp, faster-whisper, and deno for YouTube (via PyPI); on Apple Silicon also mlx-whisper so transcription runs on the GPU;
+- switches to a PyPI mirror in China when pypi.org is unreachable;
+- asks where to save articles, suggesting any Obsidian vaults it finds;
+- pre-downloads the speech model and runs a self-test: ~1.5GB on Apple Silicon, ~500MB elsewhere. When huggingface.co is unreachable it falls back to hf-mirror.com.
+
+Options:
+
+| Flag | Effect |
+|------|--------|
+| `--skip-model` | Don't pre-download the model; fetch it on first transcription |
+| `--with-bgutil` | Build the bgutil PO-token provider to unlock the few YouTube videos locked by SABR / PO-token (needs Node.js) |
+| `--upgrade` | Only upgrade yt-dlp — use it when a site change breaks fetching |
+| `--yes` | Don't ask questions; the output folder is chosen on first use |
+
+Supports macOS and Linux. Windows is not supported yet.
+
+## Transcription speed
+
+| Machine | Backend | Default model | Speed |
+|---------|---------|---------------|-------|
+| Apple Silicon | mlx-whisper (GPU) | large-v3-turbo | ~5.6× real time: 13 min of audio in ~2 min 20 s |
+| Everything else | faster-whisper (CPU) | small | ~1.2× real time on an M1 Pro CPU; not measured on x86, usually slower |
+
+Numbers were measured on an M1 Pro on 2026-08-29 and are rough estimates. The CPU default is the small model, so expect more mistakes in proper nouns than with the GPU's large model.
+
+## Logins and cookies
+
+Requests go out anonymously first. If that fails, the scripts find a browser you've used (Chrome, Firefox, Brave, Edge, Chromium) and retry with its cookies:
+
+- **Bilibili only serves captions to logged-in users**, so log in to Bilibili in your browser;
+- on macOS, reading Chrome's cookies triggers a Keychain prompt — click Allow;
+- to pin a browser, set `TSZ_BROWSER=firefox`; to use an exported cookie file, set `TSZ_COOKIES=/path/to/cookies.txt`.
+
+## Features
+
+- **A readable article, not a bullet dump** — reads like a short magazine piece, not `1. The author thinks…`.
+- **Faithful and bias-flagged** — facts and speculation are kept apart; the author's promotions or agenda are called out.
+- **Author-first filenames** — when a concrete author is known, files are named `Author——Topic.md`.
+- **Transcription stays on your machine** — speech-to-text never calls a cloud API and needs no paid key. Writing the article is done by your agent, so the transcript goes to whatever model that agent uses.
+- **Optional topic merge** — if a `topic-hub` skill is installed, each saved article is merged into the matching topic card; otherwise this step is skipped.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| yt-dlp or the venv can't be found | Run `setup.sh` |
+| It used to work and suddenly can't fetch | The site changed; run `setup.sh --upgrade` |
+| Bilibili says captions need a login | Log in to Bilibili in your browser and retry |
+| YouTube asks you to sign in or prove you're not a bot | Use a browser logged in to YouTube, or set `TSZ_COOKIES` |
+| A particular YouTube video's audio never downloads | `setup.sh --with-bgutil` (needs Node.js) |
+| You want a different output folder | `bash article-dir.sh set <folder>` |
+| Not sure what's wrong | Run `doctor.sh`; it lists what isn't ready and the command to fix it |
+
+## Running the scripts by hand
 
 ```bash
-git clone https://github.com/anneheartrecord/florilegium.git ~/.claude/skills/tashanzhishi
-bash ~/.claude/skills/tashanzhishi/setup.sh
-```
+# 1) Try captions first; exit code 2 means there are none
+DIR=$(bash ./fetch-transcript.sh "<video url>")
+python3 ./vtt2text.py "$DIR"/sub.<lang>.vtt > /tmp/transcript.txt
 
-### Optional: place it in Codex's skills directory
+# 2) No captions: download audio and transcribe locally (empty model = auto; pass zh for Chinese)
+AUDIO=$(bash ./fetch-audio.sh "<video url>")
+~/.local/share/tashanzhishi/venv/bin/python ./transcribe.py "$AUDIO" "" zh > /tmp/transcript.txt
 
-If you have a Codex skills directory, clone or symlink the repository into it:
-
-```bash
-mkdir -p ~/.codex/skills
-git clone https://github.com/anneheartrecord/florilegium.git ~/.codex/skills/tashanzhishi
-bash ~/.codex/skills/tashanzhishi/setup.sh
-```
-
-You can also keep the repository anywhere and point Codex to this repo's `SKILL.md`.
-
-Requirements: Python 3.10+, Node.js (to build the bgutil provider), deno (the JS runtime yt-dlp uses to solve YouTube's n-challenge; `setup.sh` installs it automatically). `setup.sh` creates an isolated venv. Caption and audio download can use your browser session, so it helps to be logged into YouTube / Bilibili in Chrome.
-
-## Usage
-
-In your agent, just say:
-
-```
-Use tashanzhishi to clip this link: https://www.bilibili.com/video/BVxxxx
-```
-
-Or paste a transcript and let it organize that. Output lands in `your-vault/20-knowledge/他山之石/` (configurable).
-
-Filename convention is author-first. When a concrete author is known, use `Author——Concise topic title.md`; if the author is unknown, fall back to `Concise topic title.md`, or use the institution/channel name as the prefix.
-
-You can also run the scripts manually:
-
-```bash
-# 1) Try captions first
-bash ./fetch-transcript.sh "<video url>" chrome
-
-# 2) If there are no captions, download audio
-AUDIO=$(bash ./fetch-audio.sh "<video url>" chrome)
-
-# 3) Transcribe locally
-~/.local/share/tashanzhishi/venv/bin/python ./transcribe.py "$AUDIO" small zh > /tmp/transcript.txt
+# 3) Many links: a resumable queue
+bash ./batch.sh "<url 1>" "<url 2>"
+bash ./status.sh
 ```
 
 ## Layout
 
 | File | Purpose |
 |------|---------|
-| `SKILL.md` | Main agent instruction file: flow + document template |
-| `fetch-transcript.sh` | Pull captions + metadata via yt-dlp |
-| `vtt2text.py` | Clean a .vtt subtitle into plain text |
-| `fetch-audio.sh` | Platform-aware audio download: generic yt-dlp for Bilibili and others, bgutil for locked YouTube videos |
-| `transcribe.py` | Transcribe audio with faster-whisper |
-| `setup.sh` | One-shot dependency install |
+| `SKILL.md` | Main agent instructions: workflow and article template |
+| `setup.sh` | One-time dependency install |
+| `doctor.sh` | Environment check: dependencies, capability tiers, fixes |
+| `article-dir.sh` | Read or set the article output folder |
+| `fetch-transcript.sh` | Fetch captions and metadata |
+| `vtt2text.py` | Clean vtt / srt captions into plain text |
+| `fetch-audio.sh` | Download audio; optional bgutil for locked YouTube videos |
+| `transcribe.py` | Local transcription, picks the GPU or CPU backend |
+| `batch.sh` / `status.sh` | Batch transcription queue and progress |
+| `lib.sh` | Shared shell functions |
 
 ## Credits
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
+- [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper)
 - [bgutil-ytdlp-pot-provider](https://github.com/Brainicism/bgutil-ytdlp-pot-provider)
 
 ## License

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""把 yt-dlp 下载的 .vtt 字幕清洗成纯文本。
-用法: python3 vtt2text.py <file.vtt>
+"""把 yt-dlp 下载的 .vtt / .srt 字幕清洗成纯文本。
+用法: python3 vtt2text.py <字幕文件>
 处理：去掉 WEBVTT 头、时间轴、cue 编号、内联 <c>/<时间戳> 标签；
 合并 YouTube 自动字幕常见的滚动重复（逐行去重 + 去掉被下一行包含的前缀行）。
 """

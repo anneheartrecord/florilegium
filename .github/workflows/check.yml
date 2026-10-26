@@ -1,0 +1,26 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          for f in *.sh tests/*.sh; do bash -n "$f"; done
+          python3 -m py_compile transcribe.py vtt2text.py
+      - name: Offline behavior tests
+        run: bash tests/run.sh
+      - name: Install without model
+        run: bash setup.sh --skip-model --yes
+      - name: Doctor
+        run: bash doctor.sh

@@ -5,92 +5,114 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Shell](https://img.shields.io/badge/shell-bash-green.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)
 ![Agent Workflow](https://img.shields.io/badge/agent-workflow-8A63D2.svg)
 
-一个运行时无关的本地 agent workflow：给它一个 YouTube、B 站、播客或其他视频链接（也可以直接给文字稿），它会抓字幕或转写音频，再把内容整理成一篇**可直接阅读的文章**，写进你的 Obsidian 知识库的「他山之石」目录，专门用来沉淀他人观点。全程免费、本地运行。
+一个运行时无关的本地 agent workflow：给它一个 YouTube、B 站、播客或其他视频链接，也可以直接给文字稿，它会抓字幕或在本机转写音频，再把内容整理成一篇**可直接阅读的中文文章**，存进你指定的目录（比如 Obsidian 知识库），专门用来沉淀他人观点。
 
 「他山之石，可以攻玉」——收别人的见解，为我所用。Florilegium 是中世纪学者对「采撷众家精华、汇成一编」的称呼，正好对应这个意思。workflow 的内部名仍是 `tashanzhishi`。
 
-它不是 Claude Code、Codex 或任何单一 agent 的专属扩展。适配条件只有两个：agent 能读取一份 Markdown 指令文件，并且能调用本仓库的 shell / Python 脚本。不同 agent runtime 只需要把仓库放到它能发现的位置，或显式指向这个仓库的 `SKILL.md`。Claude Code 和 Codex 只是下方提供的可选放置路径。
+它不是 Claude Code、Codex 或任何单一 agent 的专属扩展。适配条件只有两个：agent 能读取一份 Markdown 指令文件，并且能调用本仓库的 shell / Python 脚本。
 
-## 它解决什么
+## 三种用法，按需安装
 
-刷到一个好视频，想存下作者的观点，手动记又麻烦。这个 workflow 让流程变成一句话：
+| 层级 | 你给它什么 | 需要安装什么 |
+|------|-----------|-------------|
+| 1. 整理文字稿 | 粘贴文字稿、字幕或文章 | 什么都不用装，clone 下来让 agent 读 `SKILL.md` 就行 |
+| 2. 抓字幕 | 有字幕的视频链接（B 站、YouTube 等） | 跑一次 `setup.sh` |
+| 3. 本地转写 | 没有字幕的视频、播客 | 同上；首次转写会下载语音模型 |
 
-> 用 tashanzhishi 把这个链接剪藏了：`<视频链接>`
+**最快上手：** 不装任何东西，直接对 agent 说：
 
-然后它就：抓字幕 → 清洗 → 写成一篇中立、可直接阅读的文章 → 落到你 Obsidian 库的「他山之石」目录。
+```
+用 tashanzhishi 把下面这段文字稿整理成他山之石文章：<粘贴文字稿>
+```
 
-## 特点
-
-- **可读文章，不是观点汇总**：产出像一篇杂志短文，不是 `1. 作者认为…` 的清单。
-- **转录与转写意图拦截**：自动拦截「转录」「转写」指令与外部音视频链接，绝不机械输出未经清洗的 ASR 逐字稿，直接产出脱水重构的深度文章。
-- **主题知识卡自动合流闭环（Integrated with topic-hub）**：文章落盘后自动提取核心见解、关键框架与分歧对立面，单源增量合流进知识库「主题汇聚」知识卡（Topic Hub Cards），将外部见解与已有书本、笔记跨域对质；未命中时自动沉淀进待建队列，封住知识流失口。
-- **忠实 + 标注立场**：事实和推测分开，作者的带货 / 立场会被点出来。
-- **三级取文**：
-  1. 有可下载字幕 → `yt-dlp` 直接抓（最快）。
-  2. 没字幕但音频可取 → 本地 `faster-whisper` 转写。B 站无字幕视频走这条。
-  3. YouTube 反爬锁死（SABR / PO-token）→ 自带 `bgutil` PO-token 提供器解锁音频，再转写。
-- **平台感知音频兜底**：YouTube 才启动 `bgutil` 和 YouTube 专用参数；B 站等其他平台走通用 `yt-dlp` 音频下载。
-- **全免费、纯本地**：除了从视频平台取数据，没有任何内容离开你的机器，无需任何付费 API。
-- **和 Obsidian 打通**：输出目录就是你的 vault 文件夹。
-- **作者前置命名**：如果已经确定来源是具体个人，输出文件名使用 `作者名——主题标题.md`，例如 `阿里阿巴达——如何开始第一门生意.md`。
+第一次写文件时，agent 会问你文章存到哪个目录，选一次就记住。
 
 ## 安装
-
-### 作为通用仓库安装
 
 ```bash
 git clone https://github.com/anneheartrecord/florilegium.git ~/.local/share/florilegium
 bash ~/.local/share/florilegium/setup.sh
+bash ~/.local/share/florilegium/doctor.sh   # 查看哪些能力已就绪
 ```
 
-然后让你的 agent 读取 `~/.local/share/florilegium/SKILL.md`，并按里面的流程调用脚本。
+然后让你的 agent 读取 `~/.local/share/florilegium/SKILL.md`。也可以直接 clone 到 agent 的 skills 目录，例如 `~/.claude/skills/tashanzhishi` 或 `~/.codex/skills/tashanzhishi`。
 
-### 可选：放入 Claude Code skills 目录
+**唯一必需的依赖是 Python 3.10+。** 没有的话装一个 [uv](https://docs.astral.sh/uv/)，setup.sh 会用它自动下载合适的 Python。其余依赖全部装进 `~/.local/share/tashanzhishi` 下的独立 venv，不碰系统环境，卸载删掉这个目录即可。
+
+setup.sh 会做这些事，任何一步失败都只降级对应能力，不会中断安装：
+
+- 找一个 3.10+ 的 Python 建独立 venv；
+- 安装 yt-dlp、faster-whisper，以及 YouTube 需要的 deno（走 PyPI 安装）；Apple Silicon 再装 mlx-whisper，转写走 GPU；
+- 连不上 pypi.org 时自动改用清华镜像；
+- 问你文章存到哪个目录，会优先推荐本机找到的 Obsidian 库；
+- 预下载转写模型并自检：Apple Silicon 约 1.5GB，其他平台约 500MB。huggingface.co 连不上时自动改走 hf-mirror.com。
+
+可选参数：
+
+| 参数 | 作用 |
+|------|------|
+| `--skip-model` | 不预下载模型，第一次转写时再下 |
+| `--with-bgutil` | 构建 bgutil PO-token 提供器，解锁少数被锁死的 YouTube 视频（需要 Node.js） |
+| `--upgrade` | 只升级 yt-dlp，视频站改版导致抓不到时用 |
+| `--yes` | 不提问，输出目录留到第一次剪藏时再定 |
+
+支持 macOS 与 Linux，Windows 暂不支持。
+
+## 转写速度
+
+| 机器 | 后端 | 默认模型 | 速度 |
+|------|------|---------|------|
+| Apple Silicon | mlx-whisper（GPU） | large-v3-turbo | 约 5.6 倍实时：13 分钟音频约 2 分 20 秒 |
+| 其他机器 | faster-whisper（CPU） | small | M1 Pro 的 CPU 实测约 1.2 倍实时；x86 机器没有实测，通常更慢 |
+
+速度数据是 2026-08-29 在 M1 Pro 上的实测值，只做粗估。CPU 默认用 small 模型，专有名词错误率会明显高于 GPU 的大模型。
+
+## 登录态
+
+抓取时先匿名请求，拿不到再自动找本机用过的浏览器（Chrome、Firefox、Brave、Edge、Chromium），读它的 cookie 重试：
+
+- **B 站字幕必须登录才给**，所以最好在浏览器里登录过 B 站；
+- macOS 上读 Chrome 的 cookie 会弹钥匙串授权，点允许即可；
+- 想固定用某个浏览器，设 `TSZ_BROWSER=firefox`；想用导出的 cookie 文件，设 `TSZ_COOKIES=/path/to/cookies.txt`。
+
+## 特点
+
+- **可读文章，不是观点汇总**：产出像一篇杂志短文，不是 `1. 作者认为…` 的清单。
+- **忠实并标注立场**：事实和推测分开写，作者的带货或立场会被点出来。
+- **作者前置命名**：确定是具体个人时，文件名用 `作者名——主题标题.md`。
+- **转写在本机完成**：语音转文字不调用任何云端接口，也不需要付费 API。写文章这一步由你所用的 agent 完成，文字稿会发给它背后的模型，这一点取决于你用的 agent。
+- **可选的主题合流**：环境里装有 `topic-hub` skill 时，文章落盘后会自动合流进对应的主题知识卡；没有装就跳过。
+- **只输出中文**：无论来源是什么语言，文章都用中文写。
+
+## 常见问题
+
+| 现象 | 处理 |
+|------|------|
+| 提示找不到 yt-dlp 或 venv | 运行 `setup.sh` |
+| 以前能抓、突然抓不到 | 视频站改版了，运行 `setup.sh --upgrade` |
+| B 站提示字幕需要登录 | 在浏览器里登录 B 站后重试 |
+| YouTube 要求登录或确认不是机器人 | 用登录过 YouTube 的浏览器，或设 `TSZ_COOKIES` |
+| YouTube 个别视频音频始终下不来 | `setup.sh --with-bgutil`（需要 Node.js） |
+| 想换文章存放目录 | `bash article-dir.sh set <目录>` |
+| 不确定哪里出了问题 | 运行 `doctor.sh`，它会指出没就绪的项和修复命令 |
+
+## 手动跑脚本
 
 ```bash
-git clone https://github.com/anneheartrecord/florilegium.git ~/.claude/skills/tashanzhishi
-bash ~/.claude/skills/tashanzhishi/setup.sh
-```
+# 1) 优先抓字幕；退出码 2 表示没有字幕
+DIR=$(bash ./fetch-transcript.sh "<视频链接>")
+python3 ./vtt2text.py "$DIR"/sub.<语言>.vtt > /tmp/transcript.txt
 
-### 可选：放入 Codex skills 目录
+# 2) 没字幕时下载音频，再本地转写（模型留空按后端自动选，中文传 zh）
+AUDIO=$(bash ./fetch-audio.sh "<视频链接>")
+~/.local/share/tashanzhishi/venv/bin/python ./transcribe.py "$AUDIO" "" zh > /tmp/transcript.txt
 
-如果你已经有 Codex 的 skills 目录，可以直接 clone 或软链进去：
-
-```bash
-mkdir -p ~/.codex/skills
-git clone https://github.com/anneheartrecord/florilegium.git ~/.codex/skills/tashanzhishi
-bash ~/.codex/skills/tashanzhishi/setup.sh
-```
-
-也可以把仓库放在任意位置，然后让 Codex 读取这个仓库的 `SKILL.md`。
-
-依赖：Python 3.10+、Node.js（构建 bgutil 提供器）、deno（yt-dlp 解 YouTube n-challenge 的 JS 运行时，setup.sh 会自动装）。setup.sh 会建一个独立 venv，不污染系统环境。字幕和音频下载可以读取浏览器登录态，建议在 Chrome 里登录过 YouTube / B 站。
-
-## 用法
-
-在 agent 里直接说：
-
-```
-用 tashanzhishi 把这个链接剪藏了：https://www.bilibili.com/video/BVxxxx
-```
-
-或者把一段文字稿粘进来让它整理。输出落到 `你的vault/20-knowledge/他山之石/`（目录可改）。
-
-输出文件命名遵循作者前置：已知具体作者时用 `作者名——简洁中文标题.md`；作者不明确时才退回 `简洁中文标题.md`，或使用机构 / 频道名作为前缀。
-
-也可以手动跑脚本：
-
-```bash
-# 1) 优先抓字幕
-bash ./fetch-transcript.sh "<视频链接>" chrome
-
-# 2) 没字幕时下载音频
-AUDIO=$(bash ./fetch-audio.sh "<视频链接>" chrome)
-
-# 3) 本地转写
-~/.local/share/tashanzhishi/venv/bin/python ./transcribe.py "$AUDIO" small zh > /tmp/transcript.txt
+# 3) 一批链接用队列，可中断、可续跑
+bash ./batch.sh "<链接1>" "<链接2>"
+bash ./status.sh
 ```
 
 ## 目录结构
@@ -98,16 +120,21 @@ AUDIO=$(bash ./fetch-audio.sh "<视频链接>" chrome)
 | 文件 | 作用 |
 |------|------|
 | `SKILL.md` | agent 指令主文件，定义流程和文档模板 |
-| `fetch-transcript.sh` | 用 yt-dlp 抓字幕 + 元数据 |
-| `vtt2text.py` | 把 .vtt 字幕清洗成纯文本 |
-| `fetch-audio.sh` | 平台感知音频下载：B 站等走通用 yt-dlp，YouTube 锁死视频走 bgutil |
-| `transcribe.py` | 用 faster-whisper 把音频转文字 |
-| `setup.sh` | 一次性安装全部依赖 |
+| `setup.sh` | 一次性安装依赖 |
+| `doctor.sh` | 环境诊断：依赖、能力层级、修复建议 |
+| `article-dir.sh` | 读写文章输出目录 |
+| `fetch-transcript.sh` | 抓字幕与元数据 |
+| `vtt2text.py` | 把 vtt / srt 字幕清洗成纯文本 |
+| `fetch-audio.sh` | 下载音频，YouTube 锁死视频可选走 bgutil |
+| `transcribe.py` | 本地转写，自动选 GPU 或 CPU 后端 |
+| `batch.sh` / `status.sh` | 批量转写队列与进度查看 |
+| `lib.sh` | 脚本共用函数 |
 
 ## 致谢
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
+- [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper)
 - [bgutil-ytdlp-pot-provider](https://github.com/Brainicism/bgutil-ytdlp-pot-provider)
 
 ## License

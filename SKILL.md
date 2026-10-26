@@ -1,7 +1,7 @@
 ---
 name: tashanzhishi
-description: Use when 用户给出 YouTube/B站/播客/抖音/公众号等外部链接，或提供一段视频、音频、文字稿、字幕，要求「转录」「转写」「剪藏」「归档他人观点」。凡用户提到转录、转写并给出 source url 时，默认必须使用本 skill 提炼他人观点并重构为结构化中立文章（存入 20-knowledge/他山之石/），严禁仅输出未加工的 ASR 逐字稿；落盘后必须自动调用 topic-hub 执行单源增量合流，主动加入知识库对应主题知识卡。触发词：转录、转写、完整转录、转录视频、转录音频、用他山之石、剪藏到他山之石、整理成他山之石文档、把这个视频/链接存档、归档他人观点。
-version: 0.7.0
+description: Use when 用户给出 YouTube/B站/播客/抖音/公众号等外部链接，或提供一段视频、音频、文字稿、字幕，要求「转录」「转写」「剪藏」「归档他人观点」。凡用户提到转录、转写并给出 source url 时，默认必须使用本 skill 提炼他人观点并重构为结构化中立文章（存入用户设置的文章输出目录），严禁仅输出未加工的 ASR 逐字稿；落盘后如果环境里装有 topic-hub skill，自动执行单源增量合流，加入对应主题知识卡。触发词：转录、转写、完整转录、转录视频、转录音频、用他山之石、剪藏到他山之石、整理成他山之石文档、把这个视频/链接存档、归档他人观点。
+version: 0.8.0
 ---
 
 # 剪藏他人观点到「他山之石」(tashanzhishi)
@@ -10,30 +10,46 @@ version: 0.7.0
 
 把一个视频、播客或文章的内容，整理成一篇**可以直接阅读的文章**，存进「他山之石」输出目录。
 
-当前本机默认目录：
-
-```text
-/Users/abc/Documents/knowledge-base/20-knowledge/他山之石
-```
-
-通用安装时，把输出目录理解为：
-
-```text
-<your-vault>/20-knowledge/他山之石
-```
-
-如果用户给了明确目录，以用户目录为准；如果没有，本机使用上面的默认目录。
+输出目录由用户自己定，见下文「输出目录」。
 
 核心原则：产出的是给读者看的**文章**，不是观点汇总，也不是逐条「作者认为……」的清单。忠实于来源、把事实和推测分清、标注作者立场，但用流畅的文章呈现。这不是写用户自己署名的内容，所以**不套用户文风、也不跑 de-ai-flavor**。输出永远中文。
 
-这个仓库是运行时无关的本地 agent workflow，不绑定 Claude Code、Codex 或任何单一 agent。只要当前 agent 能读取这份 Markdown 指令，并调用同目录下的 shell / Python 脚本，就可以使用这套流程；Claude Code、Codex 等目录只是安装位置示例。
+这个仓库是运行时无关的本地 agent workflow，不绑定 Claude Code、Codex 或任何单一 agent。只要当前 agent 能读取这份 Markdown 指令，并调用同目录下的 shell / Python 脚本，就可以使用这套流程；Claude Code、Codex 等目录只是安装位置示例。支持 macOS 与 Linux，Windows 暂不支持。
+
+下文的 `SKILL_DIR` 指包含这份 SKILL.md 的目录。
+
+## 输出目录
+
+写文件前先取输出目录：
+
+```bash
+DIR=$(bash "$SKILL_DIR/article-dir.sh" get)
+```
+
+退出码 3 表示用户还没设置过。这时：
+
+1. 运行 `bash "$SKILL_DIR/article-dir.sh" suggest` 拿候选目录，本机找到的 Obsidian 库排在前面。
+2. 把候选目录列给用户，问文章存到哪里，也允许用户给别的路径。
+3. 用户选定后运行 `bash "$SKILL_DIR/article-dir.sh" set "<目录>"` 保存，它会建好目录并打印绝对路径。以后就不再问。
+
+用户在对话里临时指定了目录时，本次以用户说的为准，不改配置。
+
+## 依赖与自检
+
+粘贴文字稿直接整理不需要安装任何东西。抓字幕和转写音频要先跑一次 `bash "$SKILL_DIR/setup.sh"`。脚本报错、或不确定当前机器能做什么时，先跑：
+
+```bash
+bash "$SKILL_DIR/doctor.sh"
+```
+
+它会列出各项依赖、能用的能力层级和修复建议，不联网、几秒出结果。
 
 ## 何时用 / 不用
 
 - **用**：
   - 用户提到「转录」「转写」「完整转录」「整理视频」「整理播客」「剪藏他人观点」，或直接给出一个或多个外部链接（YouTube、B站、播客、抖音、公众号等 source url）、音视频文件或文字稿。
   - 用户说「剪藏到他山之石」「整理成他山之石文档」「归档这个观点」。
-  - **默认拦截与强制闭环硬规则**：凡用户给出外部链接/音视频要求「转录」或「转写」，**默认一律走本 skill 产出脱水重构的结构化中立文章，严禁机械输出未经提炼的 ASR 生肉逐字稿**；并且文章落盘后，**必须作为固定收尾步骤调用 `topic-hub` 主动合流至对应主题知识卡**。
+  - **默认拦截与强制闭环硬规则**：凡用户给出外部链接/音视频要求「转录」或「转写」，**默认一律走本 skill 产出脱水重构的结构化中立文章，严禁机械输出未经提炼的 ASR 生肉逐字稿**；并且环境里装有 `topic-hub` 时，文章落盘后**必须作为固定收尾步骤调用它，主动合流至对应主题知识卡**。
 - **不用**：用户要写自己署名的推文/长文（那是对外创作任务，走写作系统三件套流程）。
 
 ## 输入两种来源
@@ -48,20 +64,24 @@ version: 0.7.0
 链接来源，运行本目录的脚本：
 
 ```bash
-SKILL_DIR="<包含 SKILL.md 的 florilegium/tashanzhishi 目录>"
-bash "$SKILL_DIR/fetch-transcript.sh" "<链接>"          # 默认读 Chrome 登录态
-bash "$SKILL_DIR/fetch-transcript.sh" "<链接>" safari   # 换浏览器：safari/brave/edge/firefox
+SKILL_DIR="<包含 SKILL.md 的目录>"
+bash "$SKILL_DIR/fetch-transcript.sh" "<链接>"           # 先匿名抓，需要时自动用本机浏览器登录态重试
+bash "$SKILL_DIR/fetch-transcript.sh" "<链接>" firefox   # 指定浏览器：chrome/firefox/brave/edge/safari
 ```
 
-它会打印一个临时目录路径，里面有 `meta.txt`（标题 ||| 作者 ||| 上传日期 ||| 链接 ||| 时长）和一个 `.vtt` 字幕文件。YouTube / B站等平台经常需要登录态，脚本默认读 Chrome cookies，所以最好在 Chrome 里登录过对应平台。
+它会打印一个临时目录路径，里面有 `meta.txt`（标题 ||| 作者 ||| 上传日期 ||| 链接 ||| 时长）和字幕文件 `sub.<语言>.vtt` 或 `sub.<语言>.srt`（B 站只给 srt），可能有多个语言，中文优先选一个。
+
+登录态：脚本先匿名抓；没拿到字幕时自动找本机用过的浏览器，读它的 cookie 重试。B 站字幕必须登录才给，所以用户最好在浏览器里登录过 B 站。macOS 上读 Chrome cookie 会弹钥匙串授权，提醒用户点允许。也可以用环境变量 `TSZ_BROWSER` 指定浏览器，或 `TSZ_COOKIES` 指向一个 Netscape 格式的 cookie 文件。
+
+退出码 2 表示没抓到字幕，改走下文的音频兜底。
 
 把字幕清洗成纯文本再读：
 
 ```bash
-python3 "$SKILL_DIR/vtt2text.py" "<那个目录>"/sub.*.vtt > /tmp/transcript.txt
+python3 "$SKILL_DIR/vtt2text.py" "<那个目录>/sub.<语言>.vtt" > /tmp/transcript.txt
 ```
 
-`vtt2text.py` 会去掉时间轴、内联标签、HTML 实体，并合并自动字幕的滚动重复。然后用 Read 读 `meta.txt` 和 `/tmp/transcript.txt`。注意：视频结尾常有重复的「精彩片段」集锦，蒸馏时忽略那段。
+`vtt2text.py` 同时支持 vtt 与 srt，会去掉时间轴、内联标签、HTML 实体，并合并自动字幕的滚动重复。然后用 Read 读 `meta.txt` 和 `/tmp/transcript.txt`。注意：视频结尾常有重复的「精彩片段」集锦，蒸馏时忽略那段。
 
 ### 2. 写成一篇可读文章
 
@@ -74,17 +94,13 @@ python3 "$SKILL_DIR/vtt2text.py" "<那个目录>"/sub.*.vtt > /tmp/transcript.tx
 
 ### 3. 写文件
 
-写到「他山之石」输出目录。本机默认：
+写到输出目录（见上文「输出目录」）：
 
 ```text
-/Users/abc/Documents/knowledge-base/20-knowledge/他山之石/<作者名——简洁中文标题>.md
+$DIR/<作者名——简洁中文标题>.md
 ```
 
-通用安装时写到：
-
-```text
-<your-vault>/20-knowledge/他山之石/<作者名——简洁中文标题>.md
-```
+写完告诉用户文件的绝对路径。
 
 文件名规则：
 
@@ -122,8 +138,8 @@ type: 他人观点
 
 ## 写完后
 
-**固定收尾：单源增量合流进主题知识卡（必做闭环）。**
-文章落盘到 `20-knowledge/他山之石/<作者名——简洁中文标题>.md` 后，必须作为固定收尾步骤调用 `topic-hub` skill（本机路径：`~/.agent-harness/skills/topic-hub/`），执行「单源增量合流」：
+**可选收尾：单源增量合流进主题知识卡。**
+当前 agent 环境装有 `topic-hub` skill 时，文章落盘后必须作为固定收尾步骤调用它，执行单源增量合流（下面的目录以 topic-hub 的约定为准）；没有装 topic-hub 就跳过这一步，在报告里说一句即可：
 
 1. **提取核心见解**：从文章提炼 3～6 个主题词与核心逻辑判断、关键框架、公式或分歧对立面。
 2. **检索已有主题卡**：对齐 `20-knowledge/主题汇聚/` 现有主题卡。
@@ -131,7 +147,7 @@ type: 他人观点
 4. **未命中登记队列**：若无法命中已有卡片且尚未达到 3 类来源门槛，必须将候选主题、关键词种子与来源文件名登记追加至 `20-knowledge/主题汇聚/_index.md` 的「待建卡队列」末尾，彻底封住知识漏斗口。
 5. **用户明确排除才跳过**：只有用户明确说「先不合流」时才跳过此闭环。
 
-完成后简单报告：产出文章路径、来源与字幕状态、合流至哪张主题知识卡或登记了哪个待建主题。**不要**同步到 X 或个人网站。
+完成后简单报告：产出文章路径、来源与字幕状态；做了合流的话，再说明合流至哪张主题知识卡或登记了哪个待建主题。**不要**同步到 X 或个人网站。
 
 ## 常见错误
 
@@ -147,16 +163,15 @@ type: 他人观点
 
 ## 参考样例
 
-「他山之石」输出目录下的成品（SpaceX-IPO、跨境券商被查、AI时代普通人如何入局 等）就是目标形态，照它们的可读文章风格来。
+输出目录里已有的成品就是目标形态，照它们的可读文章风格来；目录还是空的，就按上面的文档结构写。
 
 ## 抓不到字幕的视频怎么办（音频兜底）
 
-`fetch-transcript.sh` 抓不到字幕时，走音频兜底（需先跑过 `setup.sh`）。B 站视频常见情况是没有字幕、只有弹幕，这时直接下载音频转写；YouTube 锁死视频会按需启动 bgutil 解锁 SABR / PO-token：
+`fetch-transcript.sh` 抓不到字幕时，走音频兜底（需先跑过 `setup.sh`）。B 站视频常见情况是没有字幕、只有弹幕，这时直接下载音频转写。YouTube 靠 setup.sh 装的 deno 解 n-challenge；少数锁死视频（SABR / PO-token）还需要可选的 bgutil 提供器，用户跑过 `setup.sh --with-bgutil`（需要 Node.js）才有，有就自动启动：
 
 ```bash
-# 1) 下载音频（YouTube 会自动启动 bgutil；B 站等平台走通用 yt-dlp）
-SKILL_DIR="<包含 SKILL.md 的 florilegium/tashanzhishi 目录>"
-AUDIO=$(bash "$SKILL_DIR/fetch-audio.sh" "<链接>" chrome)
+# 1) 下载音频（登录态规则同 fetch-transcript.sh）
+AUDIO=$(bash "$SKILL_DIR/fetch-audio.sh" "<链接>")
 # 2) 本地转写（模型留空=按后端自动选；中文传 zh）
 ~/.local/share/tashanzhishi/venv/bin/python \
   "$SKILL_DIR/transcribe.py" "$AUDIO" "" zh > /tmp/transcript.txt
@@ -164,7 +179,18 @@ AUDIO=$(bash "$SKILL_DIR/fetch-audio.sh" "<链接>" chrome)
 
 转写逐行实时写进输出文件，随时 `wc -c /tmp/transcript.txt` 看进度、区分「在跑」和「卡死」。然后读 `/tmp/transcript.txt`，按正常流程写成文章。
 
-音频也下不动时，让用户把平台自带的转写、字幕、评论区课代表笔记，或手动整理的文字稿粘贴过来。
+模型第一次用时会自动下载（Apple Silicon 约 1.5GB，其他平台约 500MB）；huggingface.co 连不上时自动改走 hf-mirror.com，用户设了 `HF_ENDPOINT` 则按用户的来。
+
+音频下载失败时，脚本会打印排查建议，通常是先 `bash "$SKILL_DIR/setup.sh" --upgrade` 升级 yt-dlp。还是不行，就让用户把平台自带的转写、字幕、评论区课代表笔记，或手动整理的文字稿粘贴过来。
+
+| 现象 | 处理 |
+|------|------|
+| 脚本说找不到 yt-dlp 或 venv | 运行 `bash "$SKILL_DIR/setup.sh"` |
+| 以前能抓、突然抓不到 | 视频站改版，运行 `bash "$SKILL_DIR/setup.sh" --upgrade` |
+| B 站提示字幕需要登录 | 让用户在浏览器里登录 B 站后重试，或设 `TSZ_BROWSER` |
+| YouTube 提示需要登录或确认不是机器人 | 同上，用登录过 YouTube 的浏览器 |
+| YouTube 个别视频音频始终下不来 | 可选装 bgutil：`setup.sh --with-bgutil`（需要 Node.js） |
+| 其他不确定的情况 | 先跑 `doctor.sh` 看哪一项没就绪 |
 
 **NotebookLM MCP 不行**：它的 `add_source` 不支持 YouTube（只能抓网页或粘贴文本），用不了。
 
@@ -184,7 +210,6 @@ AUDIO=$(bash "$SKILL_DIR/fetch-audio.sh" "<链接>" chrome)
 一批链接（整季播客、会员合集等）用 `batch.sh`，不要手写一次性队列脚本：
 
 ```bash
-SKILL_DIR="<包含 SKILL.md 的 florilegium/tashanzhishi 目录>"
 bash "$SKILL_DIR/batch.sh" "https://youtube.com/watch?v=AAA" "https://bilibili.com/video/BVxxx/"
 ```
 
